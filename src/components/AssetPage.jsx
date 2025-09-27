@@ -33,15 +33,6 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
     }
   };
 
-  // 메뉴 외 영역 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = () => setOpenedMenuId(null);
-    if (openedMenuId) {
-      window.addEventListener('click', handleClickOutside);
-      return () => window.removeEventListener('click', handleClickOutside);
-    }
-  }, [openedMenuId]);
-
   return (
     <div className="w-full max-w-2xl p-8 bg-white rounded-2xl shadow-lg">
       <div className='p-6 mb-6 bg-gray-50 border border-gray-200 rounded-xl'>
@@ -60,73 +51,76 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
             <div className='flex flex-col gap-3' ref={provided.innerRef} {...provided.droppableProps}>
               {logics.length > 0 ? (
                 logics.map((logic, index) => (
-                  <Draggable key={logic.id} draggableId={logic.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500 ${snapshot.isDragging ? 'bg-blue-50' : ''}`}
-                      >
-                        {/* 로직 이름 영역 */}
+                  <React.Fragment key={logic.id}>
+                    <Draggable draggableId={logic.id} index={index}>
+                      {(provided, snapshot) => (
                         <div
-                          className="flex-grow cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenedMenuId(logic.id === openedMenuId ? null : logic.id);
-                          }}
-                          role="button"
-                          tabIndex="0"
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500 ${snapshot.isDragging ? 'bg-blue-50' : ''}`}
                         >
-                          <span className="text-base font-medium">{index + 1}. {logic.name}</span>
-                        </div>
-                        {/* 메뉴 영역 */}
-                        {openedMenuId === logic.id && (
+                          {/* 로직 이름 영역 */}
                           <div
-                            className="absolute z-10 right-20 bg-white border rounded-lg shadow-lg flex flex-col"
-                            style={{ minWidth: '120px' }}
+                            className="flex-grow cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenedMenuId(logic.id === openedMenuId ? null : logic.id);
+                            }}
+                            role="button"
+                            tabIndex="0"
+                          >
+                            <span className="text-base font-medium">{index + 1}. {logic.name}</span>
+                          </div>
+                          {/* 드래그 핸들 */}
+                          <span
+                            {...provided.dragHandleProps}
+                            className="ml-4 mr-3 cursor-grab text-xl"
+                            aria-label="드래그 핸들"
                             onClick={e => e.stopPropagation()}
                           >
-                            <button
-                              className="px-4 py-2 border-b hover:bg-blue-50 text-left"
-                              onClick={() => {
-                                setOpenedMenuId(null);
-                                alert('실행 기능은 추후 구현!');
-                              }}
-                            >
-                              실행하기
-                            </button>
-                            <button
-                              className="px-4 py-2 border-b hover:bg-blue-50 text-left"
-                              onClick={() => {
-                                setOpenedMenuId(null);
-                                onLogicClick(logic.id);
-                              }}
-                            >
-                              수정하기
-                            </button>
-                            <button
-                              className="px-4 py-2 hover:bg-red-50 text-left text-red-600"
-                              onClick={() => {
-                                setOpenedMenuId(null);
-                                onDeleteLogic(logic.id);
-                              }}
-                            >
-                              삭제하기
-                            </button>
-                          </div>
-                        )}
-                        {/* 드래그 핸들 */}
-                        <span
-                          {...provided.dragHandleProps}
-                          className="ml-4 mr-3 cursor-grab text-xl"
-                          aria-label="드래그 핸들"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          ☰
-                        </span>
-                      </div>
-                    )}
-                  </Draggable>
+                            ☰
+                          </span>
+                        </div>
+                      )}
+                    </Draggable>
+                    {/* 슬라이드 메뉴 영역 */}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ${openedMenuId === logic.id ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'} bg-white border-x border-b rounded-b-lg flex items-center`}
+                      style={{ minWidth: '120px' }}
+                    >
+                      {openedMenuId === logic.id && (
+                        <div className="flex flex-row justify-end w-full gap-2 px-4 py-2">
+                          <button
+                            className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
+                            onClick={() => {
+                              setOpenedMenuId(null);
+                              alert('실행 기능은 추후 구현!');
+                            }}
+                          >
+                            실행하기
+                          </button>
+                          <button
+                            className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
+                            onClick={() => {
+                              setOpenedMenuId(null);
+                              onLogicClick(logic.id);
+                            }}
+                          >
+                            수정하기
+                          </button>
+                          <button
+                            className="px-3 py-1 bg-red-50 hover:bg-red-100 rounded text-sm text-red-600"
+                            onClick={() => {
+                              setOpenedMenuId(null);
+                              onDeleteLogic(logic.id);
+                            }}
+                          >
+                            삭제하기
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
                 ))
               ) : (
                 <p>저장된 로직이 없습니다.</p>
