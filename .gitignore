@@ -1,4 +1,3 @@
-
 ### react ###
 .DS_*
 *.log
@@ -59,3 +58,21 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
