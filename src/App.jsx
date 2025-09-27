@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
 // ----------------------------------------------------------------
@@ -67,6 +67,7 @@ const App = () => {
           onLogicClick={handleLogicClick} 
           onAddNewLogic={handleAddNewLogic} 
           onDeleteLogic={handleDeleteLogic}
+          onReorderLogics={setLogics} // 순서 변경 시 logics 상태 업데이트
         />
       ) : (
         <LogicEditorPage 
