@@ -1,0 +1,28 @@
+
+/* 1. 부모 컨테이너: 화면 전체를 덮고 Flexbox 활성화 */
+.app-container {
+    display: flex;
+    /* 수평 중앙 정렬 */
+    justify-content: center; 
+    /* 수직 중앙 정렬 */
+    align-items: center;    
+    /* 화면 전체 높이를 차지하도록 설정 */
+    height: 100vh; 
+    width: 100vw;
+    /* (선택) 배경색을 넣어 중앙 정렬을 쉽게 확인 */
+    background-color: #282c34; 
+}
+
+/* 2. 중앙에 위치할 자식 박스 */
+.centered-box {
+    width: 1700px;
+    height: 1000px;
+    background-color: #61dafb; /* 눈에 잘 띄는 색상 */
+    color: #282c34;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
