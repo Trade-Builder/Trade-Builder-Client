@@ -8,6 +8,8 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
   const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
 
   useEffect(() => {
     if (!localStorage.getItem('runningLogic')) {
@@ -31,6 +33,44 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
       onReorderLogics(items);
       localStorage.setItem('userLogics', JSON.stringify(items));
     }
+  };
+
+  // 새 로직 인라인 생성 시작
+  const startCreateNewLogic = () => {
+    // 이미 편집 중이면 무시
+    if (editingId) return;
+    const tempId = `temp-${Date.now()}`;
+    const items = [...logics, { id: tempId, name: '', data: {}, _temp: true }];
+    onReorderLogics && onReorderLogics(items);
+    setOpenedMenuId(null);
+    setEditingId(tempId);
+    setEditingValue('');
+  };
+
+  // 생성 확정 (Enter 또는 blur 시)
+  const commitCreateNewLogic = () => {
+    if (!editingId) return;
+    const name = editingValue.trim();
+    if (!name) {
+      cancelCreateNewLogic();
+      return;
+    }
+    const newId = `logic-${Date.now()}`;
+    const updated = logics.map((l) => (l.id === editingId ? { id: newId, name, data: {} } : l));
+    onReorderLogics && onReorderLogics(updated);
+    localStorage.setItem('userLogics', JSON.stringify(updated));
+    setEditingId(null);
+    setEditingValue('');
+  };
+
+  // 생성 취소 (Esc 또는 빈 값)
+  const cancelCreateNewLogic = () => {
+    if (!editingId) return;
+    const updated = logics.filter((l) => l.id !== editingId);
+    onReorderLogics && onReorderLogics(updated);
+    localStorage.setItem('userLogics', JSON.stringify(updated));
+    setEditingId(null);
+    setEditingValue('');
   };
 
   return (
@@ -57,29 +97,51 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500 ${snapshot.isDragging ? 'bg-blue-50' : ''}`}
+                          className={`flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:border-blue-500 ${snapshot.isDragging ? 'bg-blue-50' : ''} cursor-pointer`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (logic.id === editingId) return; // 편집 중에는 토글하지 않음
+                            setOpenedMenuId(logic.id === openedMenuId ? null : logic.id);
+                          }}
+                          role="button"
+                          tabIndex={0}
                         >
-                          {/* 로직 이름 영역 */}
-                          <div
-                            className="flex-grow cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenedMenuId(logic.id === openedMenuId ? null : logic.id);
-                            }}
-                            role="button"
-                            tabIndex="0"
-                          >
-                            <span className="text-base font-medium">{index + 1}. {logic.name}</span>
+                          {/* 로직 이름 영역 (행 전체가 클릭 가능하므로 별도 onClick 불필요) */}
+                          <div className="flex-grow">
+                            {logic.id === editingId ? (
+                              <input
+                                className="w-full px-3 py-2 text-sm border rounded outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="새 로직 이름을 입력하고 Enter를 누르세요"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') commitCreateNewLogic();
+                                  if (e.key === 'Escape') cancelCreateNewLogic();
+                                }}
+                                onBlur={commitCreateNewLogic}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="text-base font-medium">{index + 1}. {logic.name}</span>
+                            )}
                           </div>
-                          {/* 드래그 핸들 */}
-                          <span
-                            {...provided.dragHandleProps}
-                            className="ml-4 mr-3 cursor-grab text-xl"
-                            aria-label="드래그 핸들"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            ☰
-                          </span>
+                          {/* 드래그 핸들: 드래그 시작 시 슬라이드 메뉴 닫기 */}
+                          {logic.id !== editingId && (
+                            <span
+                              {...provided.dragHandleProps}
+                              className="ml-4 mr-3 cursor-grab text-xl select-none"
+                              aria-label="드래그 핸들"
+                              onMouseDown={(e) => {
+                                setOpenedMenuId(null);
+                                if (provided.dragHandleProps && typeof provided.dragHandleProps.onMouseDown === 'function') {
+                                  provided.dragHandleProps.onMouseDown(e);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              ☰
+                            </span>
+                          )}
                         </div>
                       )}
                     </Draggable>
@@ -130,7 +192,10 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
           )}
         </Droppable>
       </DragDropContext>
-      <button className="flex items-center justify-center w-full p-4 mt-5 text-lg font-semibold text-white bg-blue-600 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-blue-700" onClick={onAddNewLogic}>
+      <button
+        className="flex items-center justify-center w-full p-4 mt-5 text-lg font-semibold text-white bg-blue-600 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-blue-700"
+        onClick={startCreateNewLogic}
+      >
         <span className="mr-2 text-xl">(+)</span> 새 로직 추가하기
       </button>
     </div>
