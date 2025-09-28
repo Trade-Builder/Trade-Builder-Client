@@ -7,6 +7,7 @@ import LogicEditorPage from './components/LogicEditorPage';
 const App = () => {
   const [currentPage, setCurrentPage] = useState('asset'); // 'asset' or 'editor'
   const [selectedLogicId, setSelectedLogicId] = useState(null);
+  const [newLogicName, setNewLogicName] = useState('');
   const [logics, setLogics] = useState([]);
 
   // 데이터 로딩 및 초기화
@@ -29,14 +30,16 @@ const App = () => {
     setCurrentPage('editor');
   };
 
-  const handleAddNewLogic = () => {
+  const handleAddNewLogic = (name) => {
     setSelectedLogicId(null);
+    setNewLogicName(name || '');
     setCurrentPage('editor');
   };
 
   const handleBackToAssetPage = () => {
     setCurrentPage('asset');
     setSelectedLogicId(null);
+    setNewLogicName('');
   };
     
   const handleSaveLogic = (updatedLogic) => {
@@ -74,6 +77,7 @@ const App = () => {
           selectedLogicId={selectedLogicId} 
           onBack={handleBackToAssetPage}
           onSave={handleSaveLogic}
+          defaultNewLogicName={newLogicName}
         />
       )}
     </div>
