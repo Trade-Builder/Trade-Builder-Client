@@ -139,7 +139,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     };
 
   return (
-    <div className="w-full max-w-[1900px] h-[90vh] p-4 sm:p-6 lg:p-8 bg-white rounded-2xl shadow-lg  flex flex-col">
+    <div className="w-full max-w-[1900px] h-[100vh] p-4 sm:p-6 lg:p-8 bg-white rounded-2xl shadow-lg  flex flex-col">
         {/* 상단 헤더: 로직 이름 수정 및 저장/뒤로가기 버튼 */}
         <div className="flex items-center justify-between pb-4 border-b">
             <input 
@@ -161,35 +161,56 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
         {/* 메인 컨텐츠: 왼쪽 노드 목록 + 중앙 캔버스 2영역 + 오른쪽 정보 패널 */}
         <div className="flex flex-grow mt-4 gap-6">
-            {/* 1. RETE 노드 (왼쪽 사이드바), 차후에 구현 예정 */}
-                        <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col gap-3">    
-                <h3 className="text-lg font-bold text-center mb-2">노드 목록</h3>
-                                                {[
-                                                    // Supplier
-                                                    { label: 'Stock(종목)', kind: 'stock' },
-                                                    { label: 'ROI(수익률)', kind: 'roi' },
-                                                    // Calculator
-                                                    { label: 'CurrentPrice(현재가)', kind: 'currentPrice' },
-                                                    { label: 'HighestPrice(최고가)', kind: 'highestPrice' },
-                                                    { label: 'RSI', kind: 'rsi' },
-                                                    { label: 'SMA', kind: 'sma' },
-                                                    // Condition
-                                                    { label: 'Compare(비교)', kind: 'compare' },
-                                                    // Consumer
-                                                    { label: 'Buy(매수)', kind: 'buy' },
-                                                    { label: 'Sell(매도)', kind: 'sell' },
-                                                    // Branch/Flow
-                                                    // { label: 'Branch(조건 분기)', kind: 'branch' }
-                                                ].map(item => (
-                                    <div
-                                        key={item.kind}
-                                        draggable
-                                        onDragStart={(e) => onDragStart(e, item.kind)}
-                                        className="p-3 text-center bg-white border rounded-md shadow-sm cursor-grab select-none"
-                                    >
-                                        {item.label} 
-                                    </div>
-                                ))}
+            {/* 1. RETE 노드 (왼쪽 사이드바) */}
+            <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col text-center gap-7">
+                {[
+                    {
+                        title: 'Supplier',
+                        items: [
+                            { label: 'Stock(종목)', kind: 'stock' },
+                            { label: 'ROI(수익률)', kind: 'roi' }
+                        ]
+                    },
+                    {
+                        title: 'Calculator',
+                        items: [
+                            { label: 'CurrentPrice(현재가)', kind: 'currentPrice' },
+                            { label: 'HighestPrice(최고가)', kind: 'highestPrice' },
+                            { label: 'RSI', kind: 'rsi' },
+                            { label: 'SMA', kind: 'sma' }
+                        ]
+                    },
+                    {
+                        title: 'Condition',
+                        items: [
+                            { label: 'Compare(비교)', kind: 'compare' }
+                        ]
+                    },
+                    {
+                        title: 'Consumer',
+                        items: [
+                            { label: 'Buy(매수)', kind: 'buy' },
+                            { label: 'Sell(매도)', kind: 'sell' }
+                        ]
+                    }
+                ].map((group) => (
+                    <div key={group.title} className="flex flex-col gap-2">
+                        <div className="text-base font-semibold text-gray-700 px-1">{group.title}</div>
+                        <div className="flex flex-col gap-2">
+                            {group.items.map((item) => (
+                                <div
+                                    key={item.kind}
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, item.kind)}
+                                    className="p-3 text-center bg-white border rounded-md shadow-sm cursor-grab select-none hover:bg-gray-100"
+                                    title="드래그하여 캔버스로 가져오세요"
+                                >
+                                    {item.label}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* 2. 노드 설정 공간 (중앙 캔버스) */}

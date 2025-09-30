@@ -174,7 +174,10 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
                             className="px-3 py-1 bg-red-50 hover:bg-red-100 rounded text-sm text-red-600"
                             onClick={() => {
                               setOpenedMenuId(null);
-                              onDeleteLogic(logic.id);
+                              const confirmed = window.confirm(`정말로 "${logic.name}" 로직을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`);
+                              if (confirmed) {
+                                onDeleteLogic(logic.id);
+                              }
                             }}
                           >
                             삭제하기
