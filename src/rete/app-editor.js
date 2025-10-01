@@ -278,10 +278,12 @@ export function clientToWorld(area, container, clientX, clientY, evt) {
   if (evt && area && area.area && typeof area.area.setPointerFrom === 'function') {
     try {
       area.area.setPointerFrom(evt)
-      const { k, x, y } = area.area.transform
-      const sx = area.area.pointer.x
-      const sy = area.area.pointer.y
-      return { x: (sx - x) / k, y: (sy - y) / k }
+      // setPoiterForm을 실행한 이후에는 area.area.pointer가 월드 좌표를 가짐
+      // 여기에 역변환을 다시 적용해서 zoom 스케일에 따라 달라지는 오프셋이 발생했던 것.
+      // 그래서 포인터 좌표를 역변환 없이 그대로 반환하게 함.
+      const wx = area.area.pointer.x
+      const wy = area.area.pointer.y
+      return { x: wx, y: wy }
     } catch (_) {
       // fallback below
     }
