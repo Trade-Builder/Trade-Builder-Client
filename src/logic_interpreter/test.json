@@ -1,0 +1,87 @@
+{
+    "id": "logic-1759734170400",
+    "name": "asdf",
+    "stock": "NVDA",
+    "data": {
+        "buyGraph": {
+            "nodes": [
+                {
+                    "id": "b4109fc1a7fb9533",
+                    "label": "CurrentPrice",
+                    "kind": "currentPrice",
+                    "position": {
+                        "x": 114.4754448273241,
+                        "y": 35.016977378604906
+                    },
+                    "controls": {}
+                },
+                {
+                    "id": "aec7d1ab8cc0006f",
+                    "label": "HighestPrice",
+                    "kind": "highestPrice",
+                    "position": {
+                        "x": 116.30253019938206,
+                        "y": 194.26189191165543
+                    },
+                    "controls": {
+                        "periodLength": 1,
+                        "periodUnit": "day"
+                    }
+                },
+                {
+                    "id": "0b0974fb5f6c8541",
+                    "label": "Compare",
+                    "kind": "compare",
+                    "position": {
+                        "x": 393.8592449094476,
+                        "y": 34.18355534269587
+                    },
+                    "controls": {
+                        "operator": ">"
+                    }
+                },
+                {
+                    "id": "596ce7b537bc509c",
+                    "label": "Buy",
+                    "kind": "buy",
+                    "position": {
+                        "x": 684.9557359059245,
+                        "y": 37.9467464392323
+                    },
+                    "controls": {
+                        "orderType": "market",
+                        "limitPrice": 100,
+                        "sellPercent": 2
+                    }
+                }
+            ],
+            "connections": [
+                {
+                    "id": "af3d6ea2e1575607",
+                    "source": "b4109fc1a7fb9533",
+                    "target": "0b0974fb5f6c8541",
+                    "sourceOutput": "value",
+                    "targetInput": "a"
+                },
+                {
+                    "id": "7d0f61d067c38af7",
+                    "source": "aec7d1ab8cc0006f",
+                    "target": "0b0974fb5f6c8541",
+                    "sourceOutput": "value",
+                    "targetInput": "b"
+                },
+                {
+                    "id": "bd29ef7c6a86d942",
+                    "source": "0b0974fb5f6c8541",
+                    "target": "596ce7b537bc509c",
+                    "sourceOutput": "out",
+                    "targetInput": "cond"
+                }
+            ]
+        },
+        "sellGraph": {
+            "nodes": [],
+            "connections": []
+        }
+    }
+}
