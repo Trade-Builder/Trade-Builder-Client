@@ -628,9 +628,9 @@ export function exportGraph(editor, area) {
 
 /**
  * 저장된 그래프 데이터(JSON)를 읽어 에디터의 노드, 연결, 뷰포트를 복원하는 함수.
- * @param {object} editor - Rete.js 에디터 인스턴스이다.
- * @param {object} area - Rete.js 영역(Area) 인스턴스이다.
- * @param {object} graph - 불러올 그래프 데이터(nodes, connections, viewport)이다.
+ * @param {object} editor - Rete.js 에디터 인스턴스.
+ * @param {object} area - Rete.js 영역(Area) 인스턴스.
+ * @param {object} graph - 불러올 그래프 데이터(nodes, connections, viewport)
  */
 
 // 그래프 복원: JSON 을 읽어 노드/연결/뷰포트 재구성
@@ -643,7 +643,7 @@ export async function importGraph(editor, area, graph) {
   // 1. 노드 생성 및 값 복원
   for (const n of graph.nodes || []) {
 
-    // 제거된 노드 종류(예: Stock)를 만나면 경고를 출력하고 스킵한다.
+    // 제거된 노드 종류(예: Stock)를 만나면 경고를 출력하고 스킵.
     if (n.kind === 'stock' || n.label === 'Stock' || n.label === '종목') {
       console.warn('[importGraph] 제거된 Stock 노드 스킵:', n)
       continue
@@ -651,9 +651,9 @@ export async function importGraph(editor, area, graph) {
     const kind = n.kind || labelToKind(n.label)
     let node
     try {
-      node = createNodeByKind(kind) // 종류에 따라 새 노드 객체를 생성한다.
+      node = createNodeByKind(kind) // 종류에 따라 새 노드 객체를 생성.
     } catch (e) {
-      // 노드 생성 실패 시, 그래프가 깨지지 않도록 BuyNode와 같은 제네릭 노드로 대체한다.
+      // 노드 생성 실패 시, 그래프가 깨지지 않도록 BuyNode와 같은 제네릭 노드로 대체.
       node = new BuyNode()
     }
 
@@ -662,28 +662,28 @@ export async function importGraph(editor, area, graph) {
       for (const key of Object.keys(n.controls)) {
         const ctrl = node.controls[key]
         const val = n.controls[key]
-        // 컨트롤에 setValue 함수가 있으면 함수를 사용하고, 아니면 value 속성에 직접 값을 할당한다.
+        // 컨트롤에 setValue 함수가 있으면 함수를 사용하고, 아니면 value 속성에 직접 값을 할당.
         if (ctrl && typeof ctrl.setValue === 'function') ctrl.setValue(val)
         else if (ctrl && 'value' in ctrl) ctrl.value = val
       }
     }
 
-    await editor.addNode(node) // 새로 생성된 노드를 에디터에 추가한다.
-    idMap.set(n.id, node) // 이전 ID와 새 노드 객체를 매핑하여 저장한다.
+    await editor.addNode(node) // 새로 생성된 노드를 에디터에 추가.
+    idMap.set(n.id, node) // 이전 ID와 새 노드 객체를 매핑하여 저장.
     
     const pos = n.position || { x: 0, y: 0 }
-     // 노드의 시각적 위치를 저장된 위치로 이동시킨다. (translate)
+     // 노드의 시각적 위치를 저장된 위치로 이동시킴. (translate)
     await area.nodeViews.get(node.id)?.translate(pos.x, pos.y)
   }
 
   // 2. 연결 생성
   for (const con of graph.connections || []) {
-    // idMap을 사용하여 이전 ID에 해당하는 새 소스/타겟 노드 객체를 찾는다.
+    // idMap을 사용하여 이전 ID에 해당하는 새 소스/타겟 노드 객체를 찾음.
     const source = idMap.get(con.source)
     const target = idMap.get(con.target)
 
     if (source && target) {
-      // 노드 객체와 포트 키를 사용하여 새로운 연결을 생성하고 에디터에 추가한다.
+      // 노드 객체와 포트 키를 사용하여 새로운 연결을 생성하고 에디터에 추가.
       await editor.addConnection(new ClassicPreset.Connection(source, con.sourceOutput, target, con.targetInput))
     }
   }
@@ -692,16 +692,16 @@ export async function importGraph(editor, area, graph) {
   if (graph.viewport && area && area.area && typeof area.area.translate === 'function') {
     try {
       const { k, x, y } = graph.viewport
-      // 저장된 줌 레벨(k)과 팬 위치(x, y)를 캔버스 transform에 직접 적용한다.
+      // 저장된 줌 레벨(k)과 팬 위치(x, y)를 캔버스 transform에 직접 적용.
       if (typeof k === 'number') area.area.transform.k = k
       if (typeof x === 'number') area.area.transform.x = x
       if (typeof y === 'number') area.area.transform.y = y
-      // 캔버스 UI를 강제로 갱신한다.
+      // 캔버스 UI를 강제로 갱신.
       if (typeof area.area.update === 'function') area.area.update()
     } catch { }
   }
 
-  // 그래프 로드 후 UI 드롭다운 재적용 (DOM 렌더링 타이밍 문제에 대비한다.)
+  // 그래프 로드 후 UI 드롭다운 재적용 (DOM 렌더링 타이밍 문제에 대비함, 1회만 실행)
   if (typeof editor.reteUiEnhance === 'function') {
     requestAnimationFrame(() => {
       try { editor.reteUiEnhance() } catch { }
@@ -711,13 +711,13 @@ export async function importGraph(editor, area, graph) {
 
 // -------------------- 개별 노드 제거 (Delete) -------------------- 
 /**
- * 노드와 그에 연결된 모든 연결선을 안전하게 제거하는 유틸리티 함수이다.
- * @param {object} editor - Rete.js 에디터 인스턴스이다.
- * @param {string} nodeId - 제거할 노드의 ID이다.
+ * 노드와 그에 연결된 모든 연결선을 안전하게 제거하는 유틸리티 함수.
+ * @param {object} editor - Rete.js 에디터 인스턴스.
+ * @param {string} nodeId - 제거할 노드의 ID.
  */
 // 노드를 연결과 함께 안전 제거
 export async function removeNodeWithConnections(editor, nodeId) {
-  // 제거할 노드를 소스 또는 타겟으로 가진 모든 연결을 찾는다.
+  // 제거할 노드를 소스 또는 타겟으로 가진 모든 연결을 찾음.
   const cons = editor.getConnections().filter((c) => c.source === nodeId || c.target === nodeId)
   
   // 찾은 모든 연결을 제거한다.
