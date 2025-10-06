@@ -446,13 +446,13 @@ export async function createAppEditor(container) {
     }
     closeMenu()
   })
-  /*   // 기타 이벤트: 마우스 클릭이나 Esc 키를 누르면 메뉴 닫기
+   // 기타 이벤트: 마우스 클릭이나 Esc 키를 누르면 메뉴 닫기
    window.addEventListener('click', (e) => {
      if (e.button === 0) closeMenu()
    })
    window.addEventListener('keydown', (e) => {
      if (e.key === 'Escape') closeMenu()
-   }) */
+   }) 
 
   return {
     editor,
