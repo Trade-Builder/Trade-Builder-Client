@@ -171,11 +171,11 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 placeholder="로직 이름을 입력하세요"
                 className="text-2xl font-bold text-gray-800 border-b-2 border-transparent focus:border-blue-500 focus:outline-none focus:outline-none placeholder:text-gray-400"
             />
-            <div className="flex gap-2 items-center">
+           <div className="flex justify-start mr-940">
                 <select
                   value={stock}
                   onChange={(e)=>setStock(e.target.value)}
-                  className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring"
+                  className="border rounded px-2 py-1 text-sm mr-auto focus:outline-none focus:ring"
                 >
                   <option value="">종목 선택</option>
                   <option value="AAPL">AAPL</option>
@@ -183,6 +183,8 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                   <option value="TSLA">TSLA</option>
                   <option value="MSFT">MSFT</option>
                 </select>
+            </div>
+            <div className="flex gap-2 items-center">
                 <button onClick={onBack} className="px-4 py-2 text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
                     &larr; 뒤로가기
                 </button>

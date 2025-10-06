@@ -1,3 +1,5 @@
+// app-editor.js의 타입을 declare(선언)해 타입스크립트에서 인식하게 함.
+// app-editor.js는 Rete.js 에디터 인스턴스 생성·설정·파괴, 노드 생성, 그래프 직렬화·역직렬화, 노드 삭제 등의 함수들을 정의함.
 export function createAppEditor(container: HTMLElement): Promise<{
   editor: any;
   area: any;

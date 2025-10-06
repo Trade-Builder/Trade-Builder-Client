@@ -1,3 +1,4 @@
+// Rete js 간선 모양 렌더링 && 스타일 정의
 import styled from "styled-components";
 import { type ClassicScheme, Presets } from "rete-react-plugin";
 

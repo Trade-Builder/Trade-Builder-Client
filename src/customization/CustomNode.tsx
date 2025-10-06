@@ -1,3 +1,6 @@
+/*Rete.js 렌더 플러그인용 커스텀 노드 컴포넌트로, styled-components로 노드 스타일을 정의하고 
+Presets.classic의 RefSocket/RefControl로 입력·출력 소켓과 컨트롤을 정렬·렌더링함.*/
+
 import { type ClassicScheme, type RenderEmit, Presets } from "rete-react-plugin";
 import { type JSX } from "react";
 import styled, { css } from "styled-components";

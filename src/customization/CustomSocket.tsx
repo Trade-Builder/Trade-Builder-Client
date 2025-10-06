@@ -1,3 +1,4 @@
+/*Rete 노드의 소켓(입·출력 포트) 출력해주는 tsx*/
 import { type ClassicPreset } from "rete";
 import styled from "styled-components";
 import { $socketsize } from "./vars";
