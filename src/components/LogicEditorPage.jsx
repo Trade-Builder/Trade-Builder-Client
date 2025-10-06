@@ -8,6 +8,7 @@ import { createNodeByKind, clientToWorld, exportGraph, importGraph } from '../re
 const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName = '' }) => {
     const [logic, setLogic] = useState(null);
     const [logicName, setLogicName] = useState('');
+    const [stock, setStock] = useState('');
     const buyCanvasRef = useRef(null);
     const sellCanvasRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
@@ -21,10 +22,12 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             if (currentLogic) {
                 setLogic(currentLogic);
                 setLogicName(currentLogic.name || '');
+                setStock(currentLogic.stock || '');
             }
         } else {
             setLogic(null);
             setLogicName(defaultNewLogicName || '');
+            setStock('');
         }
     }, [selectedLogicId, defaultNewLogicName]);
 
@@ -53,9 +56,15 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             try {
                 if (buyReady && buyEditor && buyArea && buyGraph) {
                     await importGraph(buyEditor, buyArea, buyGraph);
+                    if (typeof buyEditor.reteUiEnhance === 'function') {
+                        try { buyEditor.reteUiEnhance() } catch {}
+                    }
                 }
                 if (sellReady && sellEditor && sellArea && sellGraph) {
                     await importGraph(sellEditor, sellArea, sellGraph);
+                    if (typeof sellEditor.reteUiEnhance === 'function') {
+                        try { sellEditor.reteUiEnhance() } catch {}
+                    }
                 }
             } catch (e) {
                 console.warn('그래프 로드 중 오류:', e);
@@ -83,6 +92,15 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const kind = extractKind(e.dataTransfer);
             if (!kind) return;
 
+            // 그래프별 제한 규칙 적용
+            if (which === 'buy') {
+                if (kind === 'sell') { alert('[드롭 차단] Sell 노드는 Buy 그래프에 추가 불가'); return; }
+                if (kind === 'roi') { alert('[드롭 차단] ROI 노드는 Buy 그래프에 추가 불가'); return; }
+            }
+            if (which === 'sell') {
+                if (kind === 'buy') { alert('[드롭 차단] Buy 노드는 Sell 그래프에 추가 불가'); return; }
+            }
+
             const editorRef = which === 'buy' ? buyEditorRef : sellEditorRef;
             const areaRef = which === 'buy' ? buyAreaRef : sellAreaRef;
             const containerRef = which === 'buy' ? buyCanvasRef : sellCanvasRef;
@@ -95,6 +113,9 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
             const { x, y } = clientToWorld(area, container, e.clientX, e.clientY, e);
             const node = createNodeByKind(kind);
+            // 추가 Buy/Sell 단일 개수 제한 보강 (importGraph 외 실시간)
+            if (node.kind === 'buy' && editor.getNodes().some(n => n.kind === 'buy')) { alert('[드롭 차단] Buy 노드는 1개만 허용'); return; }
+            if (node.kind === 'sell' && editor.getNodes().some(n => n.kind === 'sell')) { alert('[드롭 차단] Sell 노드는 1개만 허용'); return; }
             await editor.addNode(node);
             await area.nodeViews.get(node.id)?.translate(x, y);
         }, [buyEditorRef, sellEditorRef, buyAreaRef, sellAreaRef]);
@@ -114,6 +135,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 const payload = {
                     id: selectedLogicId || `logic-${Date.now()}`,
                     name: logicName,
+                    stock: stock || undefined,
                     data: updatedLogicData,
                 };
 
@@ -149,12 +171,23 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 placeholder="로직 이름을 입력하세요"
                 className="text-2xl font-bold text-gray-800 border-b-2 border-transparent focus:border-blue-500 focus:outline-none focus:outline-none placeholder:text-gray-400"
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+                <select
+                  value={stock}
+                  onChange={(e)=>setStock(e.target.value)}
+                  className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring"
+                >
+                  <option value="">종목 선택</option>
+                  <option value="AAPL">AAPL</option>
+                  <option value="NVDA">NVDA</option>
+                  <option value="TSLA">TSLA</option>
+                  <option value="MSFT">MSFT</option>
+                </select>
                 <button onClick={onBack} className="px-4 py-2 text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
                     &larr; 뒤로가기
                 </button>
-                <button onClick={handleSave} className="px-4 py-2 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                    저장하기
+                <button onClick={handleSave} className="px-4 py-2 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={!logicName || !stock}>
+                    저장 / 실행
                 </button>
             </div>
         </div>
@@ -164,26 +197,24 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             {/* 1. RETE 노드 (왼쪽 사이드바) */}
             <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col text-center gap-7">
                 {[
-                    {
-                        title: 'Supplier',
-                        items: [
-                            { label: 'Stock(종목)', kind: 'stock' },
-                            { label: 'ROI(수익률)', kind: 'roi' }
-                        ]
-                    },
-                    {
-                        title: 'Calculator',
-                        items: [
+                    { 
+                        title: 'Supplier', 
+                        items: 
+                        [ 
+                            { label: 'Const(상수)', kind: 'const' },
                             { label: 'CurrentPrice(현재가)', kind: 'currentPrice' },
                             { label: 'HighestPrice(최고가)', kind: 'highestPrice' },
-                            { label: 'RSI', kind: 'rsi' },
-                            { label: 'SMA', kind: 'sma' }
+                            { label: 'RSI(투자지표)', kind: 'rsi' },
+                            { label: 'ROI(수익률)', kind: 'roi' },
+                            { label: 'SMA(단순 이동 평균)', kind: 'sma' }
                         ]
                     },
+                    
                     {
                         title: 'Condition',
                         items: [
-                            { label: 'Compare(비교)', kind: 'compare' }
+                            { label: 'Compare(비교)', kind: 'compare' },
+                            { label: 'LogicOp(논리)', kind: 'logicOp' }
                         ]
                     },
                     {
@@ -214,27 +245,33 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             </div>
 
             {/* 2. 노드 설정 공간 (중앙 캔버스) */}
-           <div className="w-3/5 bg-gray-100 rounded-lg border flex flex-col">
-    
-            {/* 상단 영역 (Rete.js 캔버스) */}
-                                                <div
-                                    ref={buyCanvasRef}
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => handleDropOn(e, 'buy')}
-                                                                        className="flex-1 border-b relative overflow-hidden"
-                                    title="여기로 드래그하여 노드를 추가"
-                                />
+                     <div className="w-3/5 bg-gray-100 rounded-lg border flex flex-col">
+                        {/* 상단 영역 (Rete.js 캔버스) */}
+                        <div
+                            ref={buyCanvasRef}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => handleDropOn(e, 'buy')}
+                            className="flex-1 border-b relative overflow-hidden"
+                            title="여기로 드래그하여 노드를 추가"
+                        >
+                            <span className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-600 bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none select-none">
+                                BuyGraph
+                            </span>
+                        </div>
 
-            {/* 하단 영역 (Rete.js 캔버스) */}
-                                            <div
-                                ref={sellCanvasRef}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => handleDropOn(e, 'sell')}
-                                                                className="flex-1 border-b relative overflow-hidden"
-                                title="여기로 드래그하여 노드를 추가"
-                            />
-
-            </div>
+                        {/* 하단 영역 (Rete.js 캔버스) */}
+                        <div
+                            ref={sellCanvasRef}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => handleDropOn(e, 'sell')}
+                            className="flex-1 border-b relative overflow-hidden"
+                            title="여기로 드래그하여 노드를 추가"
+                        >
+                            <span className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-600 bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none select-none">
+                                SellGraph
+                            </span>
+                        </div>
+                    </div>
 
             {/* 3. 정보 및 실행 패널 (오른쪽 사이드바) */}
             <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col">
