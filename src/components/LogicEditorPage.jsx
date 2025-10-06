@@ -175,7 +175,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 <select
                   value={stock}
                   onChange={(e)=>setStock(e.target.value)}
-                  className="ml-[50px] border rounded px-2 py-1 text-sm  focus:outline-none focus:ring"
+                  className="ml-[80px] border rounded px-2 py-1 text-sm  focus:outline-none focus:ring"
                 >
                   <option value="">종목 선택</option>
                   <option value="AAPL">AAPL</option>
