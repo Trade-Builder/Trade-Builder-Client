@@ -171,11 +171,11 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 placeholder="로직 이름을 입력하세요"
                 className="text-2xl font-bold text-gray-800 border-b-2 border-transparent focus:border-blue-500 focus:outline-none focus:outline-none placeholder:text-gray-400"
             />
-           <div className="flex justify-start mr-940">
+           <div className="flex justify-start mr-auto">
                 <select
                   value={stock}
                   onChange={(e)=>setStock(e.target.value)}
-                  className="border rounded px-2 py-1 text-sm mr-auto focus:outline-none focus:ring"
+                  className="ml-[50px] border rounded px-2 py-1 text-sm  focus:outline-none focus:ring"
                 >
                   <option value="">종목 선택</option>
                   <option value="AAPL">AAPL</option>
