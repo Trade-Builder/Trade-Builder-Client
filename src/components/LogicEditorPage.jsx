@@ -189,7 +189,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                     &larr; 뒤로가기
                 </button>
                 <button onClick={handleSave} className="px-4 py-2 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={!logicName || !stock}>
-                    저장 / 실행
+                    저장하기
                 </button>
             </div>
         </div>
@@ -284,10 +284,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                     <p>3. 연결 상태: 미연결</p>
                 </div>
                 <button className="w-full p-3 mt-4 text-lg font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700">
-                    매수 로직 실행
-                </button>
-                 <button className="w-full p-3 mt-2 text-lg font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">
-                    매도 로직 실행
+                    로직 실행
                 </button>
             </div>
         </div>

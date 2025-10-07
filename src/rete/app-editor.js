@@ -12,7 +12,7 @@ const numberSocket = new ClassicPreset.Socket('number') // 숫자 값 전달
 const boolSocket = new ClassicPreset.Socket('bool') // 조건(Boolean)
 const flowSocket = new ClassicPreset.Socket('flow') // 흐름 제어용 (미사용)
 
-// 수익률 공급 노드
+// -------------------- Supplier 노드 (값 제공) --------------------
 export class ROINode extends ClassicPreset.Node {
   constructor() {
     super('ROI')
@@ -22,7 +22,6 @@ export class ROINode extends ClassicPreset.Node {
   }
 }
 
-// -------------------- Calculator 노드 (계산/분석) --------------------
 //현재가
 // 현재가 공급 노드
 export class CurrentPriceNode extends ClassicPreset.Node {
@@ -30,9 +29,10 @@ export class CurrentPriceNode extends ClassicPreset.Node {
     super('CurrentPrice')
     this.addOutput('value', new ClassicPreset.Output(numberSocket, '가격'))
     this.kind = 'currentPrice'
-    this.category = 'calculator'
+    this.category = 'supplier'
   }
 }
+
 //최고가
 // 특정 기간 중 최고가 계산 노드
 export class HighestPriceNode extends ClassicPreset.Node {
@@ -43,7 +43,7 @@ export class HighestPriceNode extends ClassicPreset.Node {
     // periodUnit: dropdown (day|week|month) - 내부 값은 text control을 유지하고 UI는 나중에 select로 교체
     this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
     this.kind = 'highestPrice'
-    this.category = 'calculator'
+    this.category = 'supplier'
     // UI 컨트롤 설명 메타데이터
     this._controlHints = {
       periodLength: { label: '기간 길이', title: '최고가 계산에 사용할 기간 길이 (정수)' },
@@ -51,6 +51,7 @@ export class HighestPriceNode extends ClassicPreset.Node {
     }
   }
 }
+
 //RSI
 // RSI 지표 노드
 export class RSINode extends ClassicPreset.Node {
@@ -59,9 +60,10 @@ export class RSINode extends ClassicPreset.Node {
     this.addOutput('value', new ClassicPreset.Output(numberSocket, 'RSI'))
     // this.addControl('period', new ClassicPreset.InputControl('number', { initial: 1 }))
     this.kind = 'rsi'
-    this.category = 'calculator'
+    this.category = 'supplier'
   }
 }
+
 //SMA
 // 단순 이동평균(SMA) 노드
 export class SMANode extends ClassicPreset.Node {
@@ -70,14 +72,13 @@ export class SMANode extends ClassicPreset.Node {
     this.addOutput('value', new ClassicPreset.Output(numberSocket, 'SMA'))
     this.addControl('period', new ClassicPreset.InputControl('number', { initial: 20 }))
     this.kind = 'sma'
-    this.category = 'calculator'
+    this.category = 'supplier'
     this._controlHints = {
       period: { label: '기간', title: '단순 이동평균 계산 기간 (일 수)' }
     }
   }
 }
 
-// -------------------- Const 노드 (상수) --------------------
 // 숫자 상수 공급 노드
 export class ConstNode extends ClassicPreset.Node {
   constructor() {
@@ -213,18 +214,18 @@ export async function createAppEditor(container) {
       try {
         // 2. 노드의 시각적 뷰(view) 객체를 area.nodeViews에서 가져온다.
         const view = area.nodeViews.get(node.id)
-           // 뷰가 없으면 재시도하거나 종료한다.
-        if (!view) { 
-          if (attempts < MAX_ATTEMPTS) 
+        // 뷰가 없으면 재시도하거나 종료한다.
+        if (!view) {
+          if (attempts < MAX_ATTEMPTS)
             return requestAnimationFrame(tryEnhance);
-            else return;
+          else return;
         }
         // 3. 뷰의 최상위 DOM 요소(el)를 가져온다.
 
         const el = view.element || view.el || view.root
         // DOM 요소가 없으면 재시도하거나 종료한다.
-        if (!el) { 
-          if (attempts < MAX_ATTEMPTS) return requestAnimationFrame(tryEnhance); 
+        if (!el) {
+          if (attempts < MAX_ATTEMPTS) return requestAnimationFrame(tryEnhance);
           else return;
         }
         const inputs = el.querySelectorAll('input')
@@ -236,13 +237,13 @@ export async function createAppEditor(container) {
 
         // 5. 교체할 <input> 필드 찾기 (2순위: 아직 교체되지 않은 일반 텍스트 input)
         if (!targetInput) {
-          inputs.forEach(inp => { 
-            if (!targetInput && inp.type === 'text' && !inp.dataset.replaced) targetInput = inp 
+          inputs.forEach(inp => {
+            if (!targetInput && inp.type === 'text' && !inp.dataset.replaced) targetInput = inp
           })
         }
         // 대상 input을 찾지 못했으면 재시도하거나 종료한다.
 
-        if (!targetInput) { 
+        if (!targetInput) {
           if (attempts < MAX_ATTEMPTS) return requestAnimationFrame(tryEnhance);
           else return;
         }
@@ -271,7 +272,7 @@ export async function createAppEditor(container) {
         // 2순위: 유효한 기존 input 값, 3순위: 옵션 배열의 첫 번째 값
         if (!currentVal) currentVal = targetInput.value && cfg.options.includes(targetInput.value) ? targetInput.value : cfg.options[0]
         select.value = currentVal// select에 초기 값을 설정한다.
-        
+
         // 8. 노드 컨트롤의 값을 현재 값으로 보정하여 동기화한다.
         try {
           if (ctrl) {
@@ -303,7 +304,7 @@ export async function createAppEditor(container) {
         // 원래 input 다음에 select 드롭다운을 삽입하여 화면에 표시한다.
         wrapper.insertBefore(select, targetInput.nextSibling)
       } catch {
-         // 예외 발생 시, 재시도 횟수가 남았으면 다시 시도한다.
+        // 예외 발생 시, 재시도 횟수가 남았으면 다시 시도한다.
         if (attempts < MAX_ATTEMPTS) requestAnimationFrame(tryEnhance)
       }
     }
@@ -333,10 +334,10 @@ export async function createAppEditor(container) {
   // -------------------- Node별 Select 적용 조합 --------------------
   // 노드 라벨별 select 변환 매핑
   function applySelectEnhancements(node) {
-    genericSelectEnhancer(node, { labelMatch: 'HighestPrice', controlKey: 'periodUnit', options: ['day', 'week', 'month'] })
+    genericSelectEnhancer(node, { labelMatch: 'HighestPrice', controlKey: 'periodUnit', options: ['day', 'week', 'month', 'year'] })
     genericSelectEnhancer(node, { labelMatch: 'Buy', controlKey: 'orderType', options: ['market', 'limit'] })
     genericSelectEnhancer(node, { labelMatch: 'Sell', controlKey: 'orderType', options: ['market', 'limit'] })
-    genericSelectEnhancer(node, { labelMatch: 'Compare', controlKey: 'operator', options: ['>', '>=', '<', '<=', '=='] })
+    genericSelectEnhancer(node, { labelMatch: 'Compare', controlKey: 'operator', options: ['>', '>=', '<', '<=', '==', '!='] })
     genericSelectEnhancer(node, { labelMatch: 'LogicOp', controlKey: 'operator', options: ['&&', '||'] })
   }
 
@@ -446,13 +447,13 @@ export async function createAppEditor(container) {
     }
     closeMenu()
   })
-   // 기타 이벤트: 마우스 클릭이나 Esc 키를 누르면 메뉴 닫기
-   window.addEventListener('click', (e) => {
-     if (e.button === 0) closeMenu()
-   })
-   window.addEventListener('keydown', (e) => {
-     if (e.key === 'Escape') closeMenu()
-   }) 
+  // 기타 이벤트: 마우스 클릭이나 Esc 키를 누르면 메뉴 닫기
+  window.addEventListener('click', (e) => {
+    if (e.button === 0) closeMenu()
+  })
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu()
+  })
 
   return {
     editor,
@@ -649,7 +650,7 @@ export async function importGraph(editor, area, graph) {
       continue
     }
     const kind = n.kind || labelToKind(n.label)
-    let node
+    let node;
     try {
       node = createNodeByKind(kind) // 종류에 따라 새 노드 객체를 생성.
     } catch (e) {
@@ -670,9 +671,9 @@ export async function importGraph(editor, area, graph) {
 
     await editor.addNode(node) // 새로 생성된 노드를 에디터에 추가.
     idMap.set(n.id, node) // 이전 ID와 새 노드 객체를 매핑하여 저장.
-    
+
     const pos = n.position || { x: 0, y: 0 }
-     // 노드의 시각적 위치를 저장된 위치로 이동시킴. (translate)
+    // 노드의 시각적 위치를 저장된 위치로 이동시킴. (translate)
     await area.nodeViews.get(node.id)?.translate(pos.x, pos.y)
   }
 
@@ -719,7 +720,7 @@ export async function importGraph(editor, area, graph) {
 export async function removeNodeWithConnections(editor, nodeId) {
   // 제거할 노드를 소스 또는 타겟으로 가진 모든 연결을 찾음.
   const cons = editor.getConnections().filter((c) => c.source === nodeId || c.target === nodeId)
-  
+
   // 찾은 모든 연결을 제거한다.
   for (const c of cons) {
     try { await editor.removeConnection(c.id) } catch { }
