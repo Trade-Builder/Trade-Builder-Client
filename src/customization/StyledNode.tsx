@@ -1,3 +1,4 @@
+// Rete 노드 스타일 정의 컴포넌트
 import { Presets } from "rete-react-plugin";
 import { css } from "styled-components";
 

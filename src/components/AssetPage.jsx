@@ -152,15 +152,15 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
                     >
                       {openedMenuId === logic.id && (
                         <div className="flex flex-row justify-end w-full gap-2 px-4 py-2">
-                          <button
+                        {/*  <button
                             className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                             onClick={() => {
                               setOpenedMenuId(null);
                               alert('실행 기능은 추후 구현!');
                             }}
                           >
-                            실행하기
-                          </button>
+                            실행하기 // 실행기능 임시로 뺌 
+                          </button> */} 
                           <button
                             className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                             onClick={() => {
