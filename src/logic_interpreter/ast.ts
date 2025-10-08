@@ -1,7 +1,6 @@
 import { IndicatorsSync } from '@ixjb94/indicators';
 
-//----------데모용----------
-let supplierSet = new Set(["currentPrice", "highestPrice", "rsi", "sma", "roi", "const"]);
+//-----------------데모용-----------------
 
 const generators = new Map([
     ["currentPrice", async () => {
@@ -38,6 +37,8 @@ function calc() {
     const hh5 = ta.max(highs, 5)
     console.log('Sync 5봉 최고가:', hh5)
 }
+//--------------------------------------------------
+
 
 export interface AST {
     evaluate(): number | boolean;
@@ -57,6 +58,39 @@ export class SupplierAST implements AST {
     }
 }
 
+export class ConstantAST implements AST {
+    value: number;
+    constructor(value: number) {
+        this.value = value;
+    }
+
+    evaluate() {
+        console.log(`ConstantAST evaluate called. value: ${this.value}`);
+        return this.value;
+    }
+}
+
+export class LogicOpAST implements AST {
+    operator: string;
+    childA: AST;
+    childB: AST
+    constructor(operator: string, childA: AST, childB: AST) {
+        this.operator = operator;
+        this.childA = childA;
+        this.childB = childB;
+    }
+    evaluate() {
+        const a = this.childA.evaluate() as boolean;
+        const b = this.childB.evaluate() as boolean;
+        console.log(`LogicOpAST evaluate called. expr: ${a} ${this.operator} ${b}`);
+        switch (this.operator) {
+            case '&&': return a && b;
+            case '||': return a || b;
+            default: return false;
+        }
+    }
+}
+
 export class CompareAST implements AST {
     operator: string;
     childA: AST;
@@ -69,18 +103,15 @@ export class CompareAST implements AST {
     evaluate() {
         const a = this.childA.evaluate() as number;
         const b = this.childB.evaluate() as number;
-        return compareOp(this.operator, a, b);
-    }
-}
-
-function compareOp(op: string, a: number, b: number): boolean {
-    switch (op) {
-        case '>': return a > b;
-        case '<': return a < b;
-        case '>=': return a >= b;
-        case '<=': return a <= b;
-        case '==': return a === b;
-        case '!=': return a !== b;
-        default: return false;
+        console.log(`CompareAST evaluate called. expr: ${a} ${this.operator} ${b}`);
+        switch (this.operator) {
+            case '>': return a > b;
+            case '<': return a < b;
+            case '>=': return a >= b;
+            case '<=': return a <= b;
+            case '==': return a === b;
+            case '!=': return a !== b;
+            default: return false;
+        }
     }
 }

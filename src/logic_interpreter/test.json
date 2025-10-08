@@ -6,82 +6,93 @@
         "buyGraph": {
             "nodes": [
                 {
-                    "id": "b4109fc1a7fb9533",
-                    "label": "CurrentPrice",
-                    "kind": "currentPrice",
-                    "position": {
-                        "x": 114.4754448273241,
-                        "y": 35.016977378604906
-                    },
-                    "controls": {}
-                },
-                {
-                    "id": "aec7d1ab8cc0006f",
-                    "label": "HighestPrice",
-                    "kind": "highestPrice",
-                    "position": {
-                        "x": 116.30253019938206,
-                        "y": 194.26189191165543
-                    },
-                    "controls": {
-                        "periodLength": 1,
-                        "periodUnit": "day"
-                    }
-                },
-                {
-                    "id": "0b0974fb5f6c8541",
-                    "label": "Compare",
-                    "kind": "compare",
-                    "position": {
-                        "x": 393.8592449094476,
-                        "y": 34.18355534269587
-                    },
-                    "controls": {
-                        "operator": ">"
-                    }
-                },
-                {
-                    "id": "596ce7b537bc509c",
+                    "id": "e6b14f6d9c3977ea",
                     "label": "Buy",
                     "kind": "buy",
                     "position": {
-                        "x": 684.9557359059245,
-                        "y": 37.9467464392323
+                        "x": 775.9349827018086,
+                        "y": -3.3952936488974466
                     },
                     "controls": {
-                        "orderType": "market",
+                        "orderType": "limit",
                         "limitPrice": 100,
                         "sellPercent": 2
+                    }
+                },
+                {
+                    "id": "f3e13821db8b0549",
+                    "label": "Const",
+                    "kind": "const",
+                    "position": {
+                        "x": 170.05504773740583,
+                        "y": 8.04015635863286
+                    },
+                    "controls": {
+                        "value": 50
+                    }
+                },
+                {
+                    "id": "ea33bd14a4569016",
+                    "label": "Const",
+                    "kind": "const",
+                    "position": {
+                        "x": 170.05504773740586,
+                        "y": 189.99864995040133
+                    },
+                    "controls": {
+                        "value": 10
+                    }
+                },
+                {
+                    "id": "edd75f60af86ad25",
+                    "label": "Compare",
+                    "kind": "compare",
+                    "position": {
+                        "x": 472.427250323727,
+                        "y": -2.663284440882933
+                    },
+                    "controls": {
+                        "operator": ">"
                     }
                 }
             ],
             "connections": [
                 {
-                    "id": "af3d6ea2e1575607",
-                    "source": "b4109fc1a7fb9533",
-                    "target": "0b0974fb5f6c8541",
+                    "id": "be1d7b27023651ee",
+                    "source": "f3e13821db8b0549",
+                    "target": "edd75f60af86ad25",
                     "sourceOutput": "value",
                     "targetInput": "a"
                 },
                 {
-                    "id": "7d0f61d067c38af7",
-                    "source": "aec7d1ab8cc0006f",
-                    "target": "0b0974fb5f6c8541",
+                    "id": "662f426d24e4e736",
+                    "source": "ea33bd14a4569016",
+                    "target": "edd75f60af86ad25",
                     "sourceOutput": "value",
                     "targetInput": "b"
                 },
                 {
-                    "id": "bd29ef7c6a86d942",
-                    "source": "0b0974fb5f6c8541",
-                    "target": "596ce7b537bc509c",
+                    "id": "2a3813eebd042642",
+                    "source": "edd75f60af86ad25",
+                    "target": "e6b14f6d9c3977ea",
                     "sourceOutput": "out",
                     "targetInput": "cond"
                 }
-            ]
+            ],
+            "viewport": {
+                "k": 0.7474232024866161,
+                "x": -14.853103637695355,
+                "y": 64.9905990600586
+            }
         },
         "sellGraph": {
             "nodes": [],
-            "connections": []
+            "connections": [],
+            "viewport": {
+                "k": 1,
+                "x": 0,
+                "y": -4
+            }
         }
     }
 }

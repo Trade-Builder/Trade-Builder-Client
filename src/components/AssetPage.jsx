@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import {runLogic} from '../logic_interpreter/interpreter';
 
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지

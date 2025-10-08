@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReteAppEditor } from '../hooks/useReteAppEditor';
 import { createNodeByKind, clientToWorld, exportGraph, importGraph } from '../rete/app-editor';
+import { runLogic } from '../logic_interpreter/interpreter';
 
 // ----------------------------------------------------------------
 // LogicEditorPage: 매수 / 매도 로직을 편집하는 컴포넌트
@@ -279,11 +280,17 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col">
                 <h3 className="text-lg font-bold mb-2">내부 정보</h3>
                 <div className="flex-grow p-2 bg-white rounded border text-sm text-gray-600">
-                    <p>1. 로직 상태: 편집 중</p>
-                    <p>2. 노드 개수: 0</p>
-                    <p>3. 연결 상태: 미연결</p>
+                    
                 </div>
-                <button className="w-full p-3 mt-4 text-lg font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700">
+                <button
+                    className="w-full p-3 mt-4 text-lg font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                    onClick={() => {
+                            const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+                            const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+                            runLogic(stock, { buyGraph, sellGraph });
+                        }
+                    }
+                >
                     로직 실행
                 </button>
             </div>
