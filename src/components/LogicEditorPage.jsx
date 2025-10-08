@@ -12,8 +12,25 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const [stock, setStock] = useState('');
     const buyCanvasRef = useRef(null);
     const sellCanvasRef = useRef(null);
+    const [logs, setLogs] = useState([]);
+    const [logRunDetails, setLogRunDetails] = useState(false);
+    const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
     const { editorRef: sellEditorRef, areaRef: sellAreaRef, ready: sellReady } = useReteAppEditor(sellCanvasRef);
+
+    const appendLog = useCallback((title, msg) => {
+        let date = new Date();
+        let hour = date.getHours().toString().padStart(2, '0');
+        let minute = date.getMinutes().toString().padStart(2, '0');
+        const entry = { title: title, msg: msg, time: `${hour}:${minute}`};
+        setLogs(prev => [...prev, entry]);
+    }, []);
+
+    const clearLogs = useCallback(() => setLogs([]), []);
+
+    useEffect(() => {
+        if (infoAreaRef.current) infoAreaRef.current.scrollTop = infoAreaRef.current.scrollHeight;
+    }, [logs]);
 
     // 1) 선택된 로직의 메타(이름 등) 먼저 세팅
     useEffect(() => {
@@ -278,24 +295,62 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
             {/* 3. 정보 및 실행 패널 (오른쪽 사이드바) */}
             <div className="w-1/5 p-4 bg-gray-50 rounded-lg border flex flex-col">
-                <h3 className="text-lg font-bold mb-2">내부 정보</h3>
-                <div className="flex-grow p-2 bg-white rounded border text-sm text-gray-600">
-                    
+                <h3 className="text-lg font-bold mb-2">로그</h3>
+                <div ref={infoAreaRef} className="flex-grow p-2 bg-white rounded border text-sm text-gray-600 overflow-auto" style={{ maxHeight: '60vh' }}>
+                    {logs.map((l, idx) => (
+                        <li
+                            key={idx}
+                            className="py-1 border-b last:border-b-0 flex flex-col"
+                        >
+                            <div className="text-[14px] text-black">
+                            <strong className={`text-[11px] mr-2 ${
+                                l.title === 'Error'
+                                    ? 'text-red-500'
+                                    : l.title === 'Buy' || l.title === 'Sell'
+                                    ? 'text-blue-500'
+                                    : 'text-gray-500'
+                            }`}>
+                                [{l.title}]
+                            </strong>
+                                {l.msg}
+                            </div>
+                            <span className="self-end text-[11px] text-gray-400">
+                                {l.time}
+                            </span>
+                        </li>
+                    ))}
+
                 </div>
+                {/* 실행 옵션: 실행 과정 출력 여부 */}
+                <label className="flex items-center gap-2 mt-3 mb-1 text-sm text-gray-700 select-none">
+                    <input
+                        type="checkbox"
+                        className="w-4 h-4"
+                        checked={logRunDetails}
+                        onChange={(e) => setLogRunDetails(e.target.checked)}
+                    />
+                    실행 과정 출력하기
+                </label>
                 <button
                     className="w-full p-3 mt-4 text-lg font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
                     onClick={() => {
                             const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
                             const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-                            runLogic(stock, { buyGraph, sellGraph });
+                            runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetails);
                         }
                     }
                 >
                     로직 실행
                 </button>
+                <button
+                    className="w-full p-3 mt-4 text-lg font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
+                    onClick={clearLogs}
+                >
+                    로그 초기화
+                </button>
             </div>
         </div>
     </div>
-  );
+    );
 };
 export default LogicEditorPage;
