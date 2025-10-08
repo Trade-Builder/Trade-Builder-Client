@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect } from 'react';
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
 // ----------------------------------------------------------------

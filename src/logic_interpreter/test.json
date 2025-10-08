@@ -1,0 +1,166 @@
+{
+    "id": "logic-1759734170400",
+    "name": "asdf",
+    "stock": "NVDA",
+    "data": {
+        "buyGraph": {
+            "nodes": [
+                {
+                    "id": "bcf27e4c55000916",
+                    "label": "Buy",
+                    "kind": "buy",
+                    "position": {
+                        "x": 775.9349827018086,
+                        "y": -3.3952936488974466
+                    },
+                    "controls": {
+                        "orderType": "limit",
+                        "limitPrice": 100,
+                        "sellPercent": 2
+                    }
+                },
+                {
+                    "id": "70e7539e6a2ee602",
+                    "label": "Const",
+                    "kind": "const",
+                    "position": {
+                        "x": 170.05504773740583,
+                        "y": 8.04015635863286
+                    },
+                    "controls": {
+                        "value": 46
+                    }
+                },
+                {
+                    "id": "a31dd73531aae2f0",
+                    "label": "Const",
+                    "kind": "const",
+                    "position": {
+                        "x": 178.65514938990935,
+                        "y": 191.22723590075898
+                    },
+                    "controls": {
+                        "value": 60
+                    }
+                },
+                {
+                    "id": "2cfbcd544ba52071",
+                    "label": "Compare",
+                    "kind": "compare",
+                    "position": {
+                        "x": 472.427250323727,
+                        "y": -2.663284440882933
+                    },
+                    "controls": {
+                        "operator": ">"
+                    }
+                }
+            ],
+            "connections": [
+                {
+                    "id": "58c017e632bfba93",
+                    "source": "70e7539e6a2ee602",
+                    "target": "2cfbcd544ba52071",
+                    "sourceOutput": "value",
+                    "targetInput": "a"
+                },
+                {
+                    "id": "e01fa6f77dd3a7b8",
+                    "source": "a31dd73531aae2f0",
+                    "target": "2cfbcd544ba52071",
+                    "sourceOutput": "value",
+                    "targetInput": "b"
+                },
+                {
+                    "id": "7fda97f3d9cdf791",
+                    "source": "2cfbcd544ba52071",
+                    "target": "bcf27e4c55000916",
+                    "sourceOutput": "out",
+                    "targetInput": "cond"
+                }
+            ],
+            "viewport": {
+                "k": 0.813943867507925,
+                "x": -45.10251464843755,
+                "y": 70.28076324462891
+            }
+        },
+        "sellGraph": {
+            "nodes": [
+                {
+                    "id": "854a837ee5dbe7cd",
+                    "label": "Const",
+                    "kind": "const",
+                    "position": {
+                        "x": 30.859375,
+                        "y": -62.77777777777778
+                    },
+                    "controls": {
+                        "value": 0
+                    }
+                },
+                {
+                    "id": "3f30281693b223de",
+                    "label": "CurrentPrice",
+                    "kind": "currentPrice",
+                    "position": {
+                        "x": 296.4149305555555,
+                        "y": -31.666666666666657
+                    },
+                    "controls": {}
+                },
+                {
+                    "id": "180481829c374c52",
+                    "label": "HighestPrice",
+                    "kind": "highestPrice",
+                    "position": {
+                        "x": 568.6371527777777,
+                        "y": -86.11111111111113
+                    },
+                    "controls": {
+                        "periodLength": 1,
+                        "periodUnit": "day"
+                    }
+                },
+                {
+                    "id": "369914a966086ce0",
+                    "label": "RSI",
+                    "kind": "rsi",
+                    "position": {
+                        "x": 25.30381944444445,
+                        "y": 126.11111111111111
+                    },
+                    "controls": {}
+                },
+                {
+                    "id": "6e0af24876e65083",
+                    "label": "ROI",
+                    "kind": "roi",
+                    "position": {
+                        "x": 294.19270833333337,
+                        "y": 128.33333333333331
+                    },
+                    "controls": {}
+                },
+                {
+                    "id": "24c27e718e6cd0ff",
+                    "label": "SMA",
+                    "kind": "sma",
+                    "position": {
+                        "x": 573.0815972222222,
+                        "y": 130.55555555555557
+                    },
+                    "controls": {
+                        "period": 20
+                    }
+                }
+            ],
+            "connections": [],
+            "viewport": {
+                "k": 0.9,
+                "x": 78.0859375,
+                "y": 124.5
+            }
+        }
+    }
+}

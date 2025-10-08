@@ -156,7 +156,8 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
                             className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                             onClick={() => {
                               setOpenedMenuId(null);
-                              alert('실행 기능은 추후 구현!');
+                              alert('로직 실행!');
+                              runLogic(logic.id);
                             }}
                           >
                             실행하기 // 실행기능 임시로 뺌 
