@@ -79,6 +79,14 @@ export const NodeStyles = styled.div<
     display: block;
     padding: ${$socketmargin}px ${$socketsize / 2 + $socketmargin}px;
   }
+  .control-row { display: block; }
+  .control-label {
+    color: #94a3b8; /* slate-400 */
+    font-size: 12px;
+    line-height: 1;
+    margin: 6px ${$socketsize / 2 + $socketmargin}px 4px ${$socketsize / 2 + $socketmargin}px;
+    user-select: none;
+  }
   /* Controls (inputs) - make them dark-friendly */
   .control input, .input-control input, .control select, .input-control select {
     width: 100%;
@@ -123,6 +131,27 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
   const controls = Object.entries(props.data.controls);
   const selected = props.data.selected || false;
   const { id, label, width, height } = props.data;
+  const controlHints: Record<string, { label?: string; title?: string }> = (props as any).data._controlHints || {};
+  const resolveLabel = (key: string): string | undefined => {
+    // Default from hint
+    let lbl = controlHints[key]?.label || controlHints[key]?.title;
+    // Overrides for Buy/Sell in Korean UX
+    if (label === 'Buy') {
+      if (key === 'orderType') lbl = '구매방식';
+      if (key === 'limitPrice') lbl = '구매가격';
+      if (key === 'sellPercent') lbl = '구매비율';
+    }
+    if (label === 'Sell') {
+      if (key === 'orderType') lbl = '판매방식';
+      if (key === 'limitPrice') lbl = '판매가격';
+      if (key === 'sellPercent') lbl = '판매비율';
+    }
+    if (label === 'HighestPrice') {
+      if (key === 'periodLength' && !lbl) lbl = '기간';
+      if (key === 'periodUnit' && !lbl) lbl = '단위';
+    }
+    return lbl;
+  };
 
   sortByIndex(inputs);
   sortByIndex(outputs);
@@ -161,15 +190,19 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
       )}
       {/* Controls */}
       {controls.map(([key, control]) => {
-        return control ? (
-          <RefControl
-            key={key}
-            name="control"
-            emit={props.emit}
-            payload={control}
-            data-testid={`control-${key}`}
-          />
-        ) : null;
+        if (!control) return null;
+        const lbl = resolveLabel(key);
+        return (
+          <div key={key} className="control-row">
+            {lbl && <div className="control-label">{lbl}</div>}
+            <RefControl
+              name="control"
+              emit={props.emit}
+              payload={control}
+              data-testid={`control-${key}`}
+            />
+          </div>
+        );
       })}
       {/* Inputs */}
       {inputs.map(

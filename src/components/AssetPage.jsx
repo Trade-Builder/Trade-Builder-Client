@@ -78,7 +78,7 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
       {/* 헤더 카드 */}
       <div className="relative p-6 mb-6 rounded-2xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-neutral-800/70 overflow-hidden">
         <div className="flex items-center justify-between">
-          <h2 className="mb-2 text-2xl font-semibold text-gray-100 tracking-tight">트레이딩 대시보드</h2>
+          <h2 className="mb-2 text-2xl font-semibold text-gray-100 tracking-tight">Trade Builder</h2>
           {/* 탭 */}
           <div className="hidden sm:flex gap-2">
             {['Overview','Analytics','Monitoring'].map((t,i)=> (
