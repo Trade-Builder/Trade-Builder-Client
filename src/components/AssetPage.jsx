@@ -133,14 +133,14 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
             <div className='flex flex-col gap-3' ref={provided.innerRef} {...provided.droppableProps}>
               {logics.length > 0 ? (
                 logics.map((logic, index) => (
-                  <div key={logic.id} className="flex flex-col">
+                  <div key={logic.id} className="flex flex-col group">
                     <Draggable draggableId={logic.id} index={index}>
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={`flex items-center justify-between p-4 transition-all duration-200 ease-in-out cursor-pointer 
-                          bg-neutral-900/70 border border-neutral-800/70 hover:border-cyan-500/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 
+                          bg-neutral-900/70 border border-neutral-800/70 hover:border-cyan-500/40 group-hover:border-cyan-500/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 
                           ${openedMenuId === logic.id ? 'rounded-t-xl rounded-b-none border-b-0' : 'rounded-xl'}
                           ${snapshot.isDragging ? 'ring-2 ring-cyan-400/30' : ''}`}
                           onClick={(e) => {
@@ -193,7 +193,7 @@ const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReord
                     {/* 슬라이드 메뉴 영역 */}
                     <div
                       className={`overflow-hidden transition-all duration-300 ${openedMenuId === logic.id ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'} 
-                      bg-neutral-900/70 border-x border-b border-t border-neutral-800/70 rounded-b-xl flex items-center -mt-px`}
+                      bg-neutral-900/70 border-x border-b border-t border-neutral-800/70 group-hover:border-cyan-500/40 rounded-b-xl flex items-center -mt-px`}
                       style={{ minWidth: '120px' }}
                     >
                       {openedMenuId === logic.id && (
