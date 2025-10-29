@@ -3,15 +3,19 @@ Presets.classic의 RefSocket/RefControl로 입력·출력 소켓과 컨트롤을
 
 import { type ClassicScheme, type RenderEmit, Presets } from "rete-react-plugin";
 import { type JSX } from "react";
-import styled, { css } from "styled-components";
+import styled, { css, type FlattenSimpleInterpolation } from "styled-components";
 import { $nodewidth, $socketmargin, $socketsize } from "./vars";
 
 const { RefSocket, RefControl } = Presets.classic;
 
 type NodeExtraData = { width?: number; height?: number };
+type ControlHints = Record<string, { label?: string; title?: string }>;
+type NodeMeta = { _controlHints?: ControlHints };
+type NodeStyleProps = NodeExtraData & { selected: boolean };
+type NodeStyleFn = (props: NodeStyleProps) => FlattenSimpleInterpolation | string | undefined;
 
 export const NodeStyles = styled.div<
-  NodeExtraData & { selected: boolean; styles?: (props: any) => any }
+  NodeStyleProps & { styles?: NodeStyleFn }
 >`
   /* Dark glass card */
   background: linear-gradient(180deg, #0b0f14 0%, #0a0e12 100%);
@@ -117,8 +121,8 @@ function sortByIndex<T extends [string, undefined | { index?: number }][]>(
 }
 
 type Props<S extends ClassicScheme> = {
-  data: S["Node"] & NodeExtraData;
-  styles?: () => any;
+  data: S["Node"] & NodeExtraData & NodeMeta;
+  styles?: NodeStyleFn;
   emit: RenderEmit<S>;
 };
 export type NodeComponent<Scheme extends ClassicScheme> = (
@@ -131,7 +135,7 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
   const controls = Object.entries(props.data.controls);
   const selected = props.data.selected || false;
   const { id, label, width, height } = props.data;
-  const controlHints: Record<string, { label?: string; title?: string }> = (props as any).data._controlHints || {};
+  const controlHints: ControlHints = props.data._controlHints || {};
   const resolveLabel = (key: string): string | undefined => {
     // Default from hint
     let lbl = controlHints[key]?.label || controlHints[key]?.title;
