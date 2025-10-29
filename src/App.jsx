@@ -63,7 +63,7 @@ const App = () => {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen font-sans bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen font-sans bg-transparent">
       {currentPage === 'asset' ? (
         <AssetPage 
           logics={logics}
