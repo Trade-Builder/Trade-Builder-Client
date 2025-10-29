@@ -4,6 +4,12 @@ import { AreaPlugin } from 'rete-area-plugin'
 import { ConnectionPlugin, Presets as ConnectionPresets } from 'rete-connection-plugin'
 import { ReactPlugin, Presets as ReactPresets } from 'rete-react-plugin'
 import { createRoot } from 'react-dom/client'
+// Custom themed components for nodes, sockets, connections
+import { CustomNode } from '../customization/CustomNode.tsx'
+import { CustomSocket } from '../customization/CustomSocket.tsx'
+import { CustomConnection } from '../customization/CustomConnection.tsx'
+import { addCustomBackground } from '../customization/custom-background.ts'
+import '../customization/background.css'
 
 // Typed sockets according to the design
 // 소켓 타입 정의 (현재 로직에서 number/bool 주 사용)
@@ -192,7 +198,19 @@ export async function createAppEditor(container) {
   area.use(reactRender)
 
   connection.addPreset(ConnectionPresets.classic.setup())
-  reactRender.addPreset(ReactPresets.classic.setup())
+  // Apply custom theming for Node/Socket/Connection
+  reactRender.addPreset(
+    ReactPresets.classic.setup({
+      customize: {
+        node() { return CustomNode },
+        socket() { return CustomSocket },
+        connection() { return CustomConnection }
+      }
+    })
+  )
+
+  // Optional: add subtle dark grid background to the area
+  try { addCustomBackground(area) } catch {}
 
   // --- 더블클릭 확대 비활성화: 기본 d3/zoom 유사 동작 차단 ---
   // 캔버스 컨테이너에서 발생하는 dblclick을 막아 확대 트리거를 방지한다.

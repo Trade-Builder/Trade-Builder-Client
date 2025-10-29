@@ -14,8 +14,11 @@ const Svg = styled.svg`
 
 const Path = styled.path<{ styles?: (props: any) => any }>`
   fill: none;
-  stroke-width: 5px;
-  stroke: black;
+  stroke-width: 3px;
+  stroke: #67e8f9; /* cyan-300 */
+  opacity: 0.85;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(34,211,238,0.2));
   pointer-events: auto;
   ${(props) => props.styles && props.styles(props)}
 `;

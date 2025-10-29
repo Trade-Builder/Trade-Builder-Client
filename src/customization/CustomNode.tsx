@@ -13,9 +13,10 @@ type NodeExtraData = { width?: number; height?: number };
 export const NodeStyles = styled.div<
   NodeExtraData & { selected: boolean; styles?: (props: any) => any }
 >`
-  background: black;
-  border: 2px solid grey;
-  border-radius: 10px;
+  /* Dark glass card */
+  background: linear-gradient(180deg, #0b0f14 0%, #0a0e12 100%);
+  border: 1px solid #1f2937; /* neutral-800 approx */
+  border-radius: 14px;
   cursor: pointer;
   box-sizing: border-box;
   width: ${(props) =>
@@ -25,19 +26,22 @@ export const NodeStyles = styled.div<
   padding-bottom: 6px;
   position: relative;
   user-select: none;
-  &:hover {
-    background: #333;
-  }
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  &:hover { border-color: #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
   ${(props) =>
     props.selected &&
     css`
-      border-color: red;
+      border-color: #22d3ee; /* cyan-400 */
+      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35), 0 12px 32px rgba(0,0,0,.45);
     `}
   .title {
-    color: white;
-    font-family: sans-serif;
-    font-size: 18px;
-    padding: 8px;
+    color: #e5e7eb; /* gray-200 */
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    padding: 10px 10px 6px 10px;
   }
   .output {
     text-align: right;
@@ -58,10 +62,10 @@ export const NodeStyles = styled.div<
   .input-title,
   .output-title {
     vertical-align: middle;
-    color: white;
+    color: #e5e7eb;
     display: inline-block;
-    font-family: sans-serif;
-    font-size: 14px;
+    font-family: ui-sans-serif, system-ui, -apple-system;
+    font-size: 13px;
     margin: ${$socketmargin}px;
     line-height: ${$socketsize}px;
   }
@@ -74,6 +78,21 @@ export const NodeStyles = styled.div<
   .control {
     display: block;
     padding: ${$socketmargin}px ${$socketsize / 2 + $socketmargin}px;
+  }
+  /* Controls (inputs) - make them dark-friendly */
+  .control input, .input-control input, .control select, .input-control select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0f172a; /* slate-900 */
+    color: #e5e7eb;
+    border: 1px solid #334155; /* slate-700 */
+    outline: none;
+    border-radius: 10px;
+    padding: 6px 8px;
+  }
+  .control input:focus, .input-control input:focus, .control select:focus, .input-control select:focus {
+    border-color: #22d3ee;
+    box-shadow: 0 0 0 2px rgba(34,211,238,0.25);
   }
   ${(props) => props.styles && props.styles(props)}
 `;
