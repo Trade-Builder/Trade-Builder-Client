@@ -16,10 +16,10 @@ type PathStyleFn = (props: object) => FlattenSimpleInterpolation | string | unde
 const Path = styled.path<{ styles?: PathStyleFn }>`
   fill: none;
   stroke-width: 3px;
-  stroke: #67e8f9; /* cyan-300 */
+  stroke: var(--conn-stroke);
   opacity: 0.85;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 6px rgba(34,211,238,0.2));
+  filter: drop-shadow(0 0 6px var(--accent-weak));
   pointer-events: auto;
   ${(props) => props.styles && props.styles(props)}
 `;

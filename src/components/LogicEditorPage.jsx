@@ -13,6 +13,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const buyCanvasRef = useRef(null);
     const sellCanvasRef = useRef(null);
     const [logs, setLogs] = useState([]);
+    const [theme, setTheme] = useState('dark');
     const [logRunDetails, setLogRunDetails] = useState(false);
     const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
@@ -31,6 +32,38 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     useEffect(() => {
         if (infoAreaRef.current) infoAreaRef.current.scrollTop = infoAreaRef.current.scrollHeight;
     }, [logs]);
+
+    // 초기 테마 동기화 (App과 동일한 규칙: localStorage > document > 시스템 선호)
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light' || saved === 'dark') {
+                setTheme(saved);
+                document.documentElement.setAttribute('data-theme', saved);
+                return;
+            }
+            const htmlTheme = document.documentElement.getAttribute('data-theme');
+            if (htmlTheme === 'light' || htmlTheme === 'dark') {
+                setTheme(htmlTheme);
+                return;
+            }
+            const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const next = preferDark ? 'dark' : 'light';
+            setTheme(next);
+            document.documentElement.setAttribute('data-theme', next);
+        } catch {}
+    }, []);
+
+    const toggleTheme = useCallback(() => {
+        setTheme((t) => {
+            const next = t === 'dark' ? 'light' : 'dark';
+            try {
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            } catch {}
+            return next;
+        });
+    }, []);
 
     // 1) 선택된 로직의 메타(이름 등) 먼저 세팅
     useEffect(() => {
@@ -181,7 +214,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
   return (
     <div className="w-full max-w-[1900px] h-[100vh] p-4 sm:p-6 lg:p-8 rounded-3xl shadow-2xl flex flex-col bg-neutral-950 text-gray-200 border border-neutral-800/70">
         {/* 상단 헤더: 로직 이름 수정 및 저장/뒤로가기 버튼 */}
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
+    <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
             <input 
                 type="text"
                 value={logicName}
@@ -202,7 +235,21 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                   <option value="MSFT">MSFT</option>
                 </select>
             </div>
-            <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center">
+                                {/* Light/Dark 토글: 뒤로가기 버튼 왼쪽 */}
+                                <button
+                                    onClick={toggleTheme}
+                                    style={{
+                                        padding: '8px 12px',
+                                        borderRadius: 10,
+                                        border: '1px solid var(--panel-border)',
+                                        background: 'var(--panel-bg)',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                    title="테마 전환 (Dark/Light)"
+                                >
+                                    {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                                </button>
                 <button onClick={onBack} className="px-4 py-2 text-base font-semibold text-gray-200 bg-neutral-800 border border-neutral-700 rounded-lg hover:bg-neutral-700">
                     &larr; 뒤로가기
                 </button>
@@ -244,9 +291,12 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                             { label: 'Sell(매도)', kind: 'sell' }
                         ]
                     }
-                ].map((group) => (
+                ].map((group, i, arr) => (
                     <div key={group.title} className="flex flex-col gap-2">
-                        <div className="text-base font-semibold text-gray-300 px-1">{group.title}</div>
+                        <div className="sidebar-section__bar">
+                          <span className="sidebar-section__icon" aria-hidden="true" />
+                          <span className="sidebar-section__title">{group.title}</span>
+                        </div>
                         <div className="flex flex-col gap-2">
                             {group.items.map((item) => (
                                 <div
