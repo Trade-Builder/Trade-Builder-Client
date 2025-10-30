@@ -129,7 +129,7 @@ export class CompareNode extends ClassicPreset.Node {
     this.kind = 'compare'
     this.category = 'condition'
     this._controlHints = {
-      operator: { label: '연산자', title: '비교 연산자 (>, >=, <, <=, ==)' }
+      operator: { label: '연산자', title: '비교 연산자 (>, ≥, <, ≤, =)' }
     }
   }
 }
@@ -269,19 +269,65 @@ export async function createAppEditor(container) {
         // 이미 교체된 input이라면 로직을 더 진행하지 않고 종료한다.
         if (targetInput.dataset.replaced === '1') return
 
-        // 6. <select> 드롭다운 요소를 생성하고 옵션을 채운다.
+        // 6. 드롭다운 UI 생성 (커스텀 구현: 원본 input을 숨기고, 버튼+목록으로 대체)
         const wrapper = targetInput.parentElement || el
-        const select = document.createElement('select')
-
-        // 설정된 옵션 배열을 기반으로 <option> 요소를 만들어 select에 추가한다.
+        const container = document.createElement('div')
+        container.className = 'relative'
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = [
+          'w-full', 'px-3', 'py-2', 'text-sm', 'rounded-md',
+          'border',
+          'outline-none', 'focus:ring-2', 'focus:ring-cyan-400/40', 'focus:border-cyan-400/50',
+          'flex', 'items-center', 'justify-between'
+        ].join(' ')
+        // 색상은 노드 input과 동일한 토큰을 직접 적용
+        button.style.background = 'var(--control-bg)'
+        button.style.borderColor = 'var(--control-border)'
+        button.style.color = 'var(--control-fg)'
+        const labelSpan = document.createElement('span')
+        labelSpan.className = 'truncate text-left'
+        const caretSpan = document.createElement('span')
+        caretSpan.className = 'ml-2 text-gray-400 select-none'
+        caretSpan.textContent = '▾'
+        button.appendChild(labelSpan)
+        button.appendChild(caretSpan)
+        const list = document.createElement('ul')
+        const listClasses = ['absolute','left-0','right-0','mt-1','rounded-md','border','shadow-xl','z-[1100]','hidden']
+        if (!(cfg.dropdown && cfg.dropdown.noScroll)) {
+          listClasses.push('max-h-48','overflow-auto')
+        }
+        list.className = listClasses.join(' ')
+        list.style.background = 'var(--control-bg)'
+        list.style.borderColor = 'var(--control-border)'
+        if (cfg.dropdown && cfg.dropdown.noScroll) {
+          list.style.maxHeight = 'none'
+          list.style.overflow = 'visible'
+        }
+        // 옵션 항목 생성
+        const itemTextClass = (cfg.dropdown && cfg.dropdown.itemTextClass) || 'text-sm'
         cfg.options.forEach(opt => {
-          const o = document.createElement('option')
-          o.value = opt
-          o.textContent = opt
-          select.appendChild(o)
+          const li = document.createElement('li')
+          li.textContent = opt
+          li.className = `px-3 py-2 ${itemTextClass} cursor-pointer`
+          li.style.color = 'var(--control-fg)'
+          // hover 배경은 control-border를 옅게 사용
+          li.addEventListener('mouseenter', () => {
+            li.style.background = 'rgba(51, 65, 85, 0.2)' // slate-700/20 유사
+          })
+          li.addEventListener('mouseleave', () => {
+            li.style.background = 'transparent'
+          })
+          li.addEventListener('click', () => {
+            setCurrent(opt)
+            hideList()
+          })
+          list.appendChild(li)
         })
+        container.appendChild(button)
+        container.appendChild(list)
 
-        // 7. 초기 값 결정: 컨트롤 내부 값 > 기존 input 값 > 옵션의 첫 번째 값 순서로 결정한다.
+  // 7. 초기 값 결정: 컨트롤 내부 값 > 기존 input 값 > 옵션의 첫 번째 값 순서로 결정한다.
         const ctrl = node.controls?.[cfg.controlKey]
         // 컨트롤의 현재 값(.value 또는 .getValue() 호출)을 가져온다.
         const internalVal = ctrl && (ctrl.value || (typeof ctrl.getValue === 'function' ? ctrl.getValue() : undefined))
@@ -289,7 +335,8 @@ export async function createAppEditor(container) {
         let currentVal = internalVal && cfg.options.includes(internalVal) ? internalVal : undefined
         // 2순위: 유효한 기존 input 값, 3순위: 옵션 배열의 첫 번째 값
         if (!currentVal) currentVal = targetInput.value && cfg.options.includes(targetInput.value) ? targetInput.value : cfg.options[0]
-        select.value = currentVal// select에 초기 값을 설정한다.
+  // 버튼 라벨 초기화
+  labelSpan.textContent = currentVal
 
         // 8. 노드 컨트롤의 값을 현재 값으로 보정하여 동기화한다.
         try {
@@ -298,29 +345,45 @@ export async function createAppEditor(container) {
             else ctrl.value = currentVal
           }
         } catch { }
-        // -------------------- <select> 스타일 설정 구간 --------------------
-        // 9. <select>의 스타일을 설정하여 원래 input과 비슷하게 맞춘다.
-        select.style.width = targetInput.style.width || '100%'
-        select.style.boxSizing = 'border-box'
-        select.style.padding = '2px 4px'
-
-        // 10. <select>의 'change' 이벤트 리스너를 등록한다.
-        select.addEventListener('change', () => {
+        // -------------------- 동작 로직: 열기/닫기/값 설정 --------------------
+        function showList() {
+          list.classList.remove('hidden')
+          container.classList.add('ring-2', 'ring-cyan-400/40')
+          setTimeout(() => {
+            // 외부 클릭 시 닫기
+            const onDoc = (ev) => {
+              if (!container.contains(ev.target)) hideList()
+            }
+            window.addEventListener('mousedown', onDoc, { once: true })
+          }, 0)
+        }
+        function hideList() {
+          list.classList.add('hidden')
+          container.classList.remove('ring-2', 'ring-cyan-400/40')
+        }
+        function setCurrent(val) {
+          labelSpan.textContent = val
           try {
             const ctrl2 = node.controls?.[cfg.controlKey]
             if (ctrl2) {
-              // 값이 변경될 때마다 노드 컨트롤 객체의 값을 새로운 선택 값으로 업데이트한다.
-              if (typeof ctrl2.setValue === 'function') ctrl2.setValue(select.value)
-              else ctrl2.value = select.value
+              if (typeof ctrl2.setValue === 'function') ctrl2.setValue(val)
+              else ctrl2.value = val
             }
           } catch { }
+        }
+        button.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (list.classList.contains('hidden')) showList(); else hideList()
+        })
+        button.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showList() }
+          if (e.key === 'Escape') { e.preventDefault(); hideList() }
         })
 
-        // 11. DOM 교체: 원래 input을 숨기고 select를 삽입한다.
-        targetInput.style.display = 'none' // 원래 input 필드를 화면에서 숨긴다.
-        targetInput.dataset.replaced = '1' // 교체 완료 상태를 표시한다.
-        // 원래 input 다음에 select 드롭다운을 삽입하여 화면에 표시한다.
-        wrapper.insertBefore(select, targetInput.nextSibling)
+        // 11. DOM 교체: 원래 input을 숨기고 커스텀 드롭다운을 삽입한다.
+        targetInput.style.display = 'none'
+        targetInput.dataset.replaced = '1'
+        wrapper.insertBefore(container, targetInput.nextSibling)
       } catch {
         // 예외 발생 시, 재시도 횟수가 남았으면 다시 시도한다.
         if (attempts < MAX_ATTEMPTS) requestAnimationFrame(tryEnhance)
@@ -355,7 +418,7 @@ export async function createAppEditor(container) {
     genericSelectEnhancer(node, { labelMatch: 'HighestPrice', controlKey: 'periodUnit', options: ['day', 'week', 'month', 'year'] })
     genericSelectEnhancer(node, { labelMatch: 'Buy', controlKey: 'orderType', options: ['market', 'limit'] })
     genericSelectEnhancer(node, { labelMatch: 'Sell', controlKey: 'orderType', options: ['market', 'limit'] })
-    genericSelectEnhancer(node, { labelMatch: 'Compare', controlKey: 'operator', options: ['>', '>=', '<', '<=', '==', '!='] })
+  genericSelectEnhancer(node, { labelMatch: 'Compare', controlKey: 'operator', options: ['>', '≥','=', '<', '≤ ', '≠'], dropdown: { noScroll: true, itemTextClass: 'text-base' } })
     genericSelectEnhancer(node, { labelMatch: 'LogicOp', controlKey: 'operator', options: ['&&', '||'] })
   }
 
