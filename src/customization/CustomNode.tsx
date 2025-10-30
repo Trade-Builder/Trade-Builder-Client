@@ -17,9 +17,9 @@ type NodeStyleFn = (props: NodeStyleProps) => FlattenSimpleInterpolation | strin
 export const NodeStyles = styled.div<
   NodeStyleProps & { styles?: NodeStyleFn }
 >`
-  /* Dark glass card */
-  background: linear-gradient(180deg, #0b0f14 0%, #0a0e12 100%);
-  border: 1px solid #1f2937; /* neutral-800 approx */
+  /* Themed card */
+  background: linear-gradient(180deg, var(--node-bg-start) 0%, var(--node-bg-end) 100%);
+  border: 1px solid var(--node-border);
   border-radius: 14px;
   cursor: pointer;
   box-sizing: border-box;
@@ -30,17 +30,17 @@ export const NodeStyles = styled.div<
   padding-bottom: 6px;
   position: relative;
   user-select: none;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
-  &:hover { border-color: #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+  &:hover { border-color: var(--control-border); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
   ${(props) =>
     props.selected &&
     css`
-      border-color: #22d3ee; /* cyan-400 */
-      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35), 0 12px 32px rgba(0,0,0,.45);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-weak), 0 12px 32px rgba(0,0,0,.35);
     `}
   .title {
-    color: #e5e7eb; /* gray-200 */
+    color: var(--title-color);
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
     font-size: 16px;
     font-weight: 600;
@@ -66,7 +66,7 @@ export const NodeStyles = styled.div<
   .input-title,
   .output-title {
     vertical-align: middle;
-    color: #e5e7eb;
+    color: var(--io-title-color);
     display: inline-block;
     font-family: ui-sans-serif, system-ui, -apple-system;
     font-size: 13px;
@@ -85,7 +85,7 @@ export const NodeStyles = styled.div<
   }
   .control-row { display: block; }
   .control-label {
-    color: #94a3b8; /* slate-400 */
+    color: var(--muted);
     font-size: 12px;
     line-height: 1;
     margin: 6px ${$socketsize / 2 + $socketmargin}px 4px ${$socketsize / 2 + $socketmargin}px;
@@ -95,16 +95,16 @@ export const NodeStyles = styled.div<
   .control input, .input-control input, .control select, .input-control select {
     width: 100%;
     box-sizing: border-box;
-    background: #0f172a; /* slate-900 */
-    color: #e5e7eb;
-    border: 1px solid #334155; /* slate-700 */
+    background: var(--control-bg);
+    color: var(--control-fg);
+    border: 1px solid var(--control-border);
     outline: none;
     border-radius: 10px;
     padding: 6px 8px;
   }
   .control input:focus, .input-control input:focus, .control select:focus, .input-control select:focus {
-    border-color: #22d3ee;
-    box-shadow: 0 0 0 2px rgba(34,211,238,0.25);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-weak);
   }
   ${(props) => props.styles && props.styles(props)}
 `;

@@ -9,7 +9,7 @@
 }
 
 .background {
-  background-color: #0a0f14; /* dark base */
+  background-color: var(--canvas-bg);
   opacity: 1;
   /* subtle grid */
   background-image:

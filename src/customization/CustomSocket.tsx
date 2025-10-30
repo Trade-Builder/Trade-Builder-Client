@@ -12,13 +12,13 @@ const Styles = styled.div`
   z-index: 2;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: radial-gradient(50% 50% at 50% 50%, #164e63 0%, #0b1320 100%); /* cyan-800 to dark */
-  border: 2px solid #334155; /* slate-700 */
-  box-shadow: 0 0 0 1px rgba(15,23,42,0.7), inset 0 0 8px rgba(34,211,238,0.15);
+  background: radial-gradient(50% 50% at 50% 50%, var(--socket-grad-1) 0%, var(--socket-grad-2) 100%);
+  border: 2px solid var(--socket-border);
+  box-shadow: 0 0 0 1px rgba(15,23,42,0.35), inset 0 0 8px var(--accent-weak);
   transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
   &:hover {
-    border-color: #22d3ee; /* cyan-400 */
-    box-shadow: 0 0 0 2px rgba(34,211,238,0.25), inset 0 0 10px rgba(34,211,238,0.25);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-weak), inset 0 0 10px var(--accent-weak);
     transform: scale(1.02);
   }
 `;

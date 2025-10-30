@@ -20,8 +20,22 @@ const App = () => {
   const [hasApiKeys, setHasApiKeys] = useState(false);
   const [showApiKeySettings, setShowApiKeySettings] = useState(false);
 
+  // 테마 관련 상태
+  const [theme, setTheme] = useState('dark'); // 'dark' | 'light'
+
   // 데이터 로딩 및 초기화
   useEffect(() => {
+    // 초기 테마 설정: localStorage > 시스템 선호
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        setTheme(saved);
+      } else {
+        const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(preferDark ? 'dark' : 'light');
+      }
+    } catch {}
+
     // --- 데모를 위한 기본 데이터 생성 ---
     if (!localStorage.getItem('userLogics')) {
       const mockLogics = [
@@ -79,6 +93,14 @@ const App = () => {
 
     loadKeysAndFetchAssets();
   }, []);
+
+  // 테마를 documentElement에 반영
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    } catch {}
+  }, [theme]);
 
   const handleLogicClick = (logicId) => {
     setSelectedLogicId(logicId);
@@ -215,6 +237,25 @@ const App = () => {
         </div>
       )}
 
+      {/* Theme Toggle */}
+      {currentPage === 'asset' && (
+        <div style={{ position: 'fixed', top: 14, right: 14, zIndex: 1000 }}>
+          <button
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              border: '1px solid var(--panel-border)',
+              background: 'var(--panel-bg)',
+              color: 'var(--text-primary)',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.12)'
+            }}
+            title="테마 전환 (Dark/Light)"
+          >
+            {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+          </button>
+        </div>
+      )}
       {currentPage === 'asset' ? (
         <>
           {/* API 키 설정 버튼 */}
