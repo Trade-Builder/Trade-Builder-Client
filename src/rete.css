@@ -3,9 +3,9 @@
   width: 80vw;
   height: 90vh;
   font-size: 1rem;
-  background: white;
+  background: transparent;
   margin: 1em;
   border-radius: 1em;
   text-align: left;
-  border: 3px solid #9571ff;
+  border: 1px solid rgba(31, 41, 55, 0.7);
 }

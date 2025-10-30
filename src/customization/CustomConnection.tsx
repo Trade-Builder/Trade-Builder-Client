@@ -1,5 +1,5 @@
 // Rete js 간선 모양 렌더링 && 스타일 정의
-import styled from "styled-components";
+import styled, { type FlattenSimpleInterpolation } from "styled-components";
 import { type ClassicScheme, Presets } from "rete-react-plugin";
 
 const { useConnection } = Presets.classic;
@@ -12,17 +12,21 @@ const Svg = styled.svg`
   height: 9999px;
 `;
 
-const Path = styled.path<{ styles?: (props: any) => any }>`
+type PathStyleFn = (props: object) => FlattenSimpleInterpolation | string | undefined;
+const Path = styled.path<{ styles?: PathStyleFn }>`
   fill: none;
-  stroke-width: 5px;
-  stroke: black;
+  stroke-width: 3px;
+  stroke: var(--conn-stroke);
+  opacity: 0.85;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--accent-weak));
   pointer-events: auto;
   ${(props) => props.styles && props.styles(props)}
 `;
 
 export function CustomConnection(props: {
   data: ClassicScheme["Connection"] & { isLoop?: boolean };
-  styles?: () => any;
+  styles?: () => FlattenSimpleInterpolation | string | undefined;
 }) {
   const { path } = useConnection();
 

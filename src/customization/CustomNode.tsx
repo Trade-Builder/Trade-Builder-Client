@@ -3,19 +3,24 @@ Presets.classic의 RefSocket/RefControl로 입력·출력 소켓과 컨트롤을
 
 import { type ClassicScheme, type RenderEmit, Presets } from "rete-react-plugin";
 import { type JSX } from "react";
-import styled, { css } from "styled-components";
+import styled, { css, type FlattenSimpleInterpolation } from "styled-components";
 import { $nodewidth, $socketmargin, $socketsize } from "./vars";
 
 const { RefSocket, RefControl } = Presets.classic;
 
 type NodeExtraData = { width?: number; height?: number };
+type ControlHints = Record<string, { label?: string; title?: string }>;
+type NodeMeta = { _controlHints?: ControlHints };
+type NodeStyleProps = NodeExtraData & { selected: boolean };
+type NodeStyleFn = (props: NodeStyleProps) => FlattenSimpleInterpolation | string | undefined;
 
 export const NodeStyles = styled.div<
-  NodeExtraData & { selected: boolean; styles?: (props: any) => any }
+  NodeStyleProps & { styles?: NodeStyleFn }
 >`
-  background: black;
-  border: 2px solid grey;
-  border-radius: 10px;
+  /* Themed card */
+  background: linear-gradient(180deg, var(--node-bg-start) 0%, var(--node-bg-end) 100%);
+  border: 1px solid var(--node-border);
+  border-radius: 14px;
   cursor: pointer;
   box-sizing: border-box;
   width: ${(props) =>
@@ -25,19 +30,22 @@ export const NodeStyles = styled.div<
   padding-bottom: 6px;
   position: relative;
   user-select: none;
-  &:hover {
-    background: #333;
-  }
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  &:hover { border-color: var(--control-border); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
   ${(props) =>
     props.selected &&
     css`
-      border-color: red;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-weak), 0 12px 32px rgba(0,0,0,.35);
     `}
   .title {
-    color: white;
-    font-family: sans-serif;
-    font-size: 18px;
-    padding: 8px;
+    color: var(--title-color);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    padding: 10px 10px 6px 10px;
   }
   .output {
     text-align: right;
@@ -58,10 +66,10 @@ export const NodeStyles = styled.div<
   .input-title,
   .output-title {
     vertical-align: middle;
-    color: white;
+    color: var(--io-title-color);
     display: inline-block;
-    font-family: sans-serif;
-    font-size: 14px;
+    font-family: ui-sans-serif, system-ui, -apple-system;
+    font-size: 13px;
     margin: ${$socketmargin}px;
     line-height: ${$socketsize}px;
   }
@@ -74,6 +82,29 @@ export const NodeStyles = styled.div<
   .control {
     display: block;
     padding: ${$socketmargin}px ${$socketsize / 2 + $socketmargin}px;
+  }
+  .control-row { display: block; }
+  .control-label {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+    margin: 6px ${$socketsize / 2 + $socketmargin}px 4px ${$socketsize / 2 + $socketmargin}px;
+    user-select: none;
+  }
+  /* Controls (inputs) - make them dark-friendly */
+  .control input, .input-control input, .control select, .input-control select {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--control-bg);
+    color: var(--control-fg);
+    border: 1px solid var(--control-border);
+    outline: none;
+    border-radius: 10px;
+    padding: 6px 8px;
+  }
+  .control input:focus, .input-control input:focus, .control select:focus, .input-control select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-weak);
   }
   ${(props) => props.styles && props.styles(props)}
 `;
@@ -90,8 +121,8 @@ function sortByIndex<T extends [string, undefined | { index?: number }][]>(
 }
 
 type Props<S extends ClassicScheme> = {
-  data: S["Node"] & NodeExtraData;
-  styles?: () => any;
+  data: S["Node"] & NodeExtraData & NodeMeta;
+  styles?: NodeStyleFn;
   emit: RenderEmit<S>;
 };
 export type NodeComponent<Scheme extends ClassicScheme> = (
@@ -104,6 +135,27 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
   const controls = Object.entries(props.data.controls);
   const selected = props.data.selected || false;
   const { id, label, width, height } = props.data;
+  const controlHints: ControlHints = props.data._controlHints || {};
+  const resolveLabel = (key: string): string | undefined => {
+    // Default from hint
+    let lbl = controlHints[key]?.label || controlHints[key]?.title;
+    // Overrides for Buy/Sell in Korean UX
+    if (label === 'Buy') {
+      if (key === 'orderType') lbl = '구매방식';
+      if (key === 'limitPrice') lbl = '구매가격';
+      if (key === 'sellPercent') lbl = '구매비율';
+    }
+    if (label === 'Sell') {
+      if (key === 'orderType') lbl = '판매방식';
+      if (key === 'limitPrice') lbl = '판매가격';
+      if (key === 'sellPercent') lbl = '판매비율';
+    }
+    if (label === 'HighestPrice') {
+      if (key === 'periodLength' && !lbl) lbl = '기간';
+      if (key === 'periodUnit' && !lbl) lbl = '단위';
+    }
+    return lbl;
+  };
 
   sortByIndex(inputs);
   sortByIndex(outputs);
@@ -142,15 +194,19 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
       )}
       {/* Controls */}
       {controls.map(([key, control]) => {
-        return control ? (
-          <RefControl
-            key={key}
-            name="control"
-            emit={props.emit}
-            payload={control}
-            data-testid={`control-${key}`}
-          />
-        ) : null;
+        if (!control) return null;
+        const lbl = resolveLabel(key);
+        return (
+          <div key={key} className="control-row">
+            {lbl && <div className="control-label">{lbl}</div>}
+            <RefControl
+              name="control"
+              emit={props.emit}
+              payload={control}
+              data-testid={`control-${key}`}
+            />
+          </div>
+        );
       })}
       {/* Inputs */}
       {inputs.map(
