@@ -199,43 +199,6 @@ const App = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen font-sans bg-transparent">
-      {/* API 키 설정 모달 */}
-      {showApiKeySettings && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowApiKeySettings(false)}
-              style={{
-                position: 'absolute',
-                top: '-10px',
-                right: '-10px',
-                background: '#fff',
-                border: '2px solid #ddd',
-                borderRadius: '50%',
-                width: '30px',
-                height: '30px',
-                cursor: 'pointer',
-                fontSize: '18px',
-                fontWeight: 'bold'
-              }}
-            >
-              ×
-            </button>
-            <ApiKeySettings onKeysSaved={handleApiKeysSaved} />
-          </div>
-        </div>
-      )}
 
       {/* Theme Toggle */}
       {currentPage === 'asset' && (
@@ -257,43 +220,21 @@ const App = () => {
         </div>
       )}
       {currentPage === 'asset' ? (
-        <>
-          {/* API 키 설정 버튼 */}
-          {!showApiKeySettings && (
-            <button
-              onClick={() => setShowApiKeySettings(true)}
-              style={{
-                position: 'fixed',
-                top: '20px',
-                right: '20px',
-                padding: '10px 20px',
-                backgroundColor: hasApiKeys ? '#28a745' : '#ffc107',
-                color: hasApiKeys ? '#fff' : '#000',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                zIndex: 100
-              }}
-            >
-              {hasApiKeys ? '⚙️ API 키 변경' : '⚙️ API 키 설정'}
-            </button>
-          )}
-
-          <AssetPage
-            logics={logics}
-            assets={assets}
-            assetsLoading={assetsLoading}
-            assetsError={assetsError}
-            onLogicClick={handleLogicClick}
-            onAddNewLogic={handleAddNewLogic}
-            onDeleteLogic={handleDeleteLogic}
-            onReorderLogics={setLogics}
-            onRefreshAssets={handleRefreshAssets}
-          />
-        </>
+        <AssetPage
+          logics={logics}
+          assets={assets}
+          assetsLoading={assetsLoading}
+          assetsError={assetsError}
+          onLogicClick={handleLogicClick}
+          onAddNewLogic={handleAddNewLogic}
+          onDeleteLogic={handleDeleteLogic}
+          onReorderLogics={setLogics}
+          onRefreshAssets={handleRefreshAssets}
+          onOpenApiKeySettings={() => setShowApiKeySettings(true)}
+          showApiKeySettings={showApiKeySettings}
+          onCloseApiKeySettings={() => setShowApiKeySettings(false)}
+          onApiKeysSaved={handleApiKeysSaved}
+        />
       ) : (
         <LogicEditorPage
           selectedLogicId={selectedLogicId}

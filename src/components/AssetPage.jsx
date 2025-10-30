@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import ApiKeySettings from './ApiKeySettings';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지
 // ----------------------------------------------------------------
-const AssetPage = ({ logics, assets, assetsLoading, assetsError, onLogicClick, onAddNewLogic, onDeleteLogic, onReorderLogics, onRefreshAssets }) => {
+const AssetPage = ({
+  logics,
+  assets,
+  assetsLoading,
+  assetsError,
+  onLogicClick,
+  onAddNewLogic,
+  onDeleteLogic,
+  onReorderLogics,
+  onRefreshAssets,
+  onOpenApiKeySettings,
+  showApiKeySettings,
+  onCloseApiKeySettings,
+  onApiKeysSaved
+}) => {
   const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
@@ -75,16 +90,32 @@ const AssetPage = ({ logics, assets, assetsLoading, assetsError, onLogicClick, o
 
   return (
     <div className="w-full max-w-6xl p-8 rounded-3xl shadow-2xl bg-neutral-950 text-gray-200 border border-neutral-800/70">
+      {/* API 키 설정 모달 (AssetPage 내부 렌더) */}
+      {showApiKeySettings && (
+        <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
+          <div className="relative">
+            <button
+              onClick={onCloseApiKeySettings}
+              className="absolute -top-2.5 -right-2.5 h-8 w-8 rounded-full bg-neutral-900 text-gray-100 border-2 border-neutral-700 flex items-center justify-center shadow hover:border-cyan-500/40 hover:text-white"
+              aria-label="닫기"
+              title="닫기"
+            >
+              ×
+            </button>
+            <ApiKeySettings onKeysSaved={onApiKeysSaved} />
+          </div>
+        </div>
+      )}
       {/* 헤더 카드 */}
       <div className="relative p-6 mb-6 rounded-2xl themed-card border border-neutral-800/70 overflow-hidden">
         <div className="flex items-center justify-between">
           <h2 className="mb-2 text-2xl font-semibold text-gray-100 tracking-tight">Trade Builder</h2>
           {/* 탭 */}
-          <div className="hidden sm:flex gap-2">
+          {/* <div className="hidden sm:flex gap-2">
             {['Overview','Analytics','Monitoring'].map((t,i)=> (
               <button key={t} className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${i===0? 'bg-neutral-800/70 text-gray-100 border-neutral-700' : 'bg-neutral-900/60 text-gray-300 border-neutral-800 hover:border-cyan-500/40 hover:text-white'}`}>{t}</button>
             ))}
-          </div>
+          </div> // 탭 기능 임시로 뺌*/}
         </div>
         <div className="mb-1 text-sm sm:text-base text-gray-400">
           실행중인 로직: <span className="font-medium text-cyan-400">{runningLogic ? runningLogic.name : '없음'}</span>
@@ -93,15 +124,32 @@ const AssetPage = ({ logics, assets, assetsLoading, assetsError, onLogicClick, o
           현재 수익률: <span className="font-semibold text-cyan-400">{roi.toFixed(2)}%</span>
         </div>
 
-        {/* 오버레이 미니 카드 */}
-        <div className="absolute right-4 top-4 sm:right-6 sm:top-6 backdrop-blur-md bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-3 py-2 shadow-lg">
-          <div className="text-[11px] uppercase tracking-wide text-gray-400">Status</div>
+        {/* 오버레이 미니 카드 (Status) - 클릭 시 API 키 설정 열기 */}
+        <div
+          className="absolute right-4 top-4 sm:right-6 sm:top-6 backdrop-blur-md bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2 shadow-lg cursor-pointer select-none hover:border-cyan-500/40"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
+            }
+          }}
+          title="API 키 설정 열기"
+          aria-label="API 키 설정 열기"
+        >
+          <div className="text-[12px] uppercase tracking-wide text-gray-400">API SETUP ⚙</div>
           <div className="flex items-end gap-2">
             <div className="text-lg font-semibold text-gray-100">Active</div>
             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.6)]"></span>
           </div>
         </div>
       </div>
+      {/* 추후 협업 때 추가할만한 내용: API 키가 valid 상태일때는 Active로, invalid 상태일때는 Inactive로 표시해주기 */}
 
       {/* KPI 카드 4개 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
