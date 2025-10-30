@@ -3,19 +3,22 @@ const path = require('path');
 const { SignJWT } = require('jose');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
-const Store = require('electron-store');
 const { spawn } = require('child_process');
 
 /**
- * electron-store를 사용하여 API 키를 암호화해서 안전하게 저장합니다.
- * - Windows: %APPDATA%/electron/config.json (암호화됨)
- * - macOS: ~/Library/Application Support/electron/config.json (암호화됨)
- *
- * encryptionKey: 데이터를 암호화하는 키 (프로덕션에서는 더 안전한 키 사용 권장)
+ * electron-store는 ESM 전용이므로 CJS 파일(.cjs)에서는 동적 import로 로드합니다.
+ * 최초 호출 시 한 번만 생성하여 재사용합니다.
  */
-const store = new Store({
-  encryptionKey: 'trade-builder-encryption-key-2024'
-});
+let storeInstance;
+async function getStore() {
+  if (!storeInstance) {
+    const Store = (await import('electron-store')).default;
+    storeInstance = new Store({
+      encryptionKey: 'trade-builder-encryption-key-2024'
+    });
+  }
+  return storeInstance;
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -59,6 +62,7 @@ app.on('window-all-closed', function () {
 ipcMain.handle('keys:save', async (event, accessKey, secretKey) => {
   try {
     // electron-store에 암호화해서 저장
+    const store = await getStore();
     store.set('upbit.accessKey', accessKey);
     store.set('upbit.secretKey', secretKey);
     console.log('API 키가 암호화되어 저장되었습니다.');
@@ -76,6 +80,7 @@ ipcMain.handle('keys:save', async (event, accessKey, secretKey) => {
  */
 ipcMain.handle('keys:load', async (event) => {
   try {
+    const store = await getStore();
     const accessKey = store.get('upbit.accessKey');
     const secretKey = store.get('upbit.secretKey');
 
