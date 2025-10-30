@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지
 // ----------------------------------------------------------------
-const AssetPage = ({ logics, onLogicClick, onAddNewLogic, onDeleteLogic, onReorderLogics }) => {
+const AssetPage = ({ logics, assets, assetsLoading, assetsError, onLogicClick, onAddNewLogic, onDeleteLogic, onReorderLogics, onRefreshAssets }) => {
   const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
