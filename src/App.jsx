@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
-import ApiKeySettings from './components/ApiKeySettings';
 import { getMyAssetsWithKeys } from './communicator/upbit_api';
 
 // ----------------------------------------------------------------

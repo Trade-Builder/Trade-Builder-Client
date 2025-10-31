@@ -183,29 +183,17 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
             const updatedLogicData = { buyGraph, sellGraph };
 
-                const payload = {
-                    id: selectedLogicId || `logic-${Date.now()}`,
-                    name: logicName,
-                    stock: stock || undefined,
-                    data: updatedLogicData,
-                };
+            const payload = {
+                id: selectedLogicId || `logic-${Date.now()}`,
+                name: logicName,
+                stock: stock || undefined,
+                data: updatedLogicData,
+            };
+            console.log('[로직 저장] 매수 그래프(JSON):\n', JSON.stringify(buyGraph, null, 2));
+            console.log('[로직 저장] 매도 그래프(JSON):\n', JSON.stringify(sellGraph, null, 2));
+            
+            onSave(payload);
 
-                // 저장 직전 JSON 형태를 콘솔에 출력
-                console.log('[로직 저장] 저장 payload (LogicEntry):\n', JSON.stringify(payload, null, 2));
-                console.log('[로직 저장] 매수 그래프(JSON):\n', JSON.stringify(buyGraph, null, 2));
-                console.log('[로직 저장] 매도 그래프(JSON):\n', JSON.stringify(sellGraph, null, 2));
-
-                onSave(payload);
-
-                // parent가 localStorage를 갱신한다면, 바로 리스트도 확인해보기 (있으면 출력)
-                try {
-                    const savedList = JSON.parse(localStorage.getItem('userLogics') || '[]');
-                    if (Array.isArray(savedList)) {
-                        console.log('[로직 저장] 현재 저장된 목록(userLogics) JSON: \n', JSON.stringify(savedList, null, 2));
-                    }
-                } catch {}
-            console.log('로직이 저장되었습니다!');
-            onBack();
         } catch (e) {
             console.error('저장 중 오류:', e);
         }

@@ -147,8 +147,8 @@ export class LogicOpAST implements AST {
         const a = this.childA.evaluate() as boolean;
         const b = this.childB.evaluate() as boolean;
         switch (this.operator) {
-            case '&&': return a && b;
-            case '||': return a || b;
+            case 'and': return a && b;
+            case 'or': return a || b;
             default: return false;
         }
     }
@@ -158,8 +158,8 @@ export class LogicOpAST implements AST {
         const b = this.childB.evaluateDetailed((msg:string) => log(msg)) as boolean;
         let result: boolean;
         switch (this.operator) {
-            case '&&': result = a && b; break;
-            case '||': result = a || b; break;
+            case 'and': result = a && b; break;
+            case 'or': result = a || b; break;
             default: result = false;
         }
         log(`LogicOp expr: ${a} ${this.operator} ${b} => ${result}`);
@@ -182,10 +182,10 @@ export class CompareAST implements AST {
         switch (this.operator) {
             case '>': return a > b;
             case '<': return a < b;
-            case '>=': return a >= b;
-            case '<=': return a <= b;
-            case '==': return a === b;
-            case '!=': return a !== b;
+            case '≥': return a >= b;
+            case '≤': return a <= b;
+            case '=': return a === b;
+            case '≠': return a !== b;
             default: return false;
         }
     }
@@ -197,10 +197,10 @@ export class CompareAST implements AST {
         switch (this.operator) {
             case '>': result = a > b; break;
             case '<': result = a < b; break;
-            case '>=': result = a >= b; break;
-            case '<=': result = a <= b; break;
-            case '==': result = a === b; break;
-            case '!=': result = a !== b; break;
+            case '≥': result = a >= b; break;
+            case '≤': result = a <= b; break;
+            case '=': result = a === b; break;
+            case '≠': result = a !== b; break;
             default: result = false;
         }
         log(`Compare expr: ${a.toFixed(2)} ${this.operator} ${b.toFixed(2)} => ${result}`);
