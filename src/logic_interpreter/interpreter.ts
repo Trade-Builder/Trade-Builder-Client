@@ -2,18 +2,40 @@ import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
 
-// let rl:RLConnection | null = null;
+let dummydata = [1];
+function* RLRunningRoutine(log: (title: string, msg: string) => void) {
+    window.electronAPI.startRL();
+    yield wait(5000);
+    let RLServer = new RLConnection(log);
+    yield wait(2000);
+    RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
+    yield wait(1000);
+    for (let i = 200; i < dummydata.length; i++) {
+        RLServer.send({ action: "run", index: i, data: dummydata[i] });
+        yield wait(50);
+    }
+}
+
+function wait(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
+    const iterator = generatorFunc(log);
+
+    function step(result: IteratorResult<any>) {
+        if (result.done) return; // 끝났으면 종료
+        Promise.resolve(result.value).then(() => step(iterator.next()));
+    }
+    step(iterator.next());
+}
 
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
-    // window.electronAPI.startRL();
-    // if (rl == null) {
-    //     rl = new RLConnection();
-    // }
+    startCoroutine(RLRunningRoutine, logFunc);
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
     //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
     interpreter.run(logRunDetails);
-    //rl.send({ action: "test_message", content: "Hello from the interpreter!" });
 }
 
 class Interpreter {
