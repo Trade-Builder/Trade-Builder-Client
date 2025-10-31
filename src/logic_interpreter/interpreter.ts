@@ -31,7 +31,6 @@ function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => vo
 }
 
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
-    startCoroutine(RLRunningRoutine, logFunc);
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
     //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
