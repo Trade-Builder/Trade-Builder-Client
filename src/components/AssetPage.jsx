@@ -25,6 +25,7 @@ const AssetPage = ({
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
+  const [apiValid, setApiValid] = useState(null); // null|true|false
 
   useEffect(() => {
     if (!localStorage.getItem('runningLogic')) {
@@ -37,6 +38,25 @@ const AssetPage = ({
     }
     setRoi(7.25);
   }, []);
+
+  // API 키 유효성 검사 -> 상태 배지에 반영
+  useEffect(() => {
+    const validate = async () => {
+      try {
+        // @ts-ignore
+        if (!window.electronAPI) { setApiValid(null); return; }
+        // @ts-ignore
+        const saved = await window.electronAPI.loadApiKeys();
+        if (!saved?.accessKey || !saved?.secretKey) { setApiValid(false); return; }
+        // @ts-ignore
+        await window.electronAPI.fetchUpbitAccounts(saved.accessKey, saved.secretKey);
+        setApiValid(true);
+      } catch {
+        setApiValid(false);
+      }
+    };
+    validate();
+  }, [showApiKeySettings]);
 
   // 드래그 앤 드롭 순서 변경 핸들러
   const handleDragEnd = (result) => {
@@ -144,8 +164,24 @@ const AssetPage = ({
         >
           <div className="text-[12px] uppercase tracking-wide text-gray-400">API SETUP ⚙</div>
           <div className="flex items-end gap-2">
-            <div className="text-lg font-semibold text-gray-100">Active</div>
-            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.6)]"></span>
+            {apiValid === true && (
+              <>
+                <div className="text-lg font-semibold text-gray-100">Active</div>
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.6)]"></span>
+              </>
+            )}
+            {apiValid === false && (
+              <>
+                <div className="text-lg font-semibold text-gray-100">Inactive</div>
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-400 shadow-[0_0_12px_2px_rgba(248,113,113,0.6)]"></span>
+              </>
+            )}
+            {apiValid === null && (
+              <>
+                <div className="text-lg font-semibold text-gray-100">Unknown</div>
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-neutral-500"></span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -183,7 +219,7 @@ const AssetPage = ({
                 logics.map((logic, index) => (
                   // wrapper: 외곽 윤곽선은 ring으로 강조하고, 내부 경계선 색은 유지
                   <div key={logic.id} className="flex flex-col group rounded-xl ring-1 ring-transparent hover:ring-cyan-500/40 transition-shadow">
-                    <Draggable draggableId={logic.id} index={index}>
+                    <Draggable draggableId={logic.id} index={index} isDragDisabled={logic.id === editingId}>
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}

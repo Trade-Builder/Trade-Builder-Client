@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
 import { getMyAssetsWithKeys } from './communicator/upbit_api';
+import { runLogic } from './logic_interpreter/interpreter';
 
 // ----------------------------------------------------------------
 // App: 페이지 라우팅을 담당하는 메인 컴포넌트
@@ -14,6 +15,7 @@ const App = () => {
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(true);
   const [assetsError, setAssetsError] = useState(null);
+  const [runAllInBackground, setRunAllInBackground] = useState(true);
 
   // API 키 관련 상태
   const [hasApiKeys, setHasApiKeys] = useState(false);
@@ -36,16 +38,38 @@ const App = () => {
     } catch {}
 
     // --- 데모를 위한 기본 데이터 생성 ---
-    if (!localStorage.getItem('userLogics')) {
-      const mockLogics = [
-        { id: 'logic-1', name: 'Upbit 단타 거래 로직', data: {} },
-        { id: 'logic-2', name: '삼성 자동 투자', data: {} },
-        { id: 'logic-3', name: 'S&P 500 장기 우상향 주식 투자', data: {} },
-      ];
-      localStorage.setItem('userLogics', JSON.stringify(mockLogics));
-    }
-    const savedLogics = JSON.parse(localStorage.getItem('userLogics') || '[]');
-    setLogics(savedLogics);
+    const bootstrapLogics = async () => {
+      try {
+        // @ts-ignore
+        if (window.electronAPI && window.electronAPI.loadAllLogics) {
+          // @ts-ignore
+          let saved = await window.electronAPI.loadAllLogics();
+          if (!saved || saved.length === 0) {
+            saved = [
+              { id: 'logic-1', name: 'Upbit 단타 거래 로직', data: {} },
+              { id: 'logic-2', name: '삼성 자동 투자', data: {} },
+              { id: 'logic-3', name: 'S&P 500 장기 우상향 주식 투자', data: {} },
+            ];
+            // @ts-ignore
+            await window.electronAPI.saveAllLogics(saved);
+          }
+          setLogics(saved);
+        } else {
+          // Fallback: localStorage
+          if (!localStorage.getItem('userLogics')) {
+            const mockLogics = [
+              { id: 'logic-1', name: 'Upbit 단타 거래 로직', data: {} },
+              { id: 'logic-2', name: '삼성 자동 투자', data: {} },
+              { id: 'logic-3', name: 'S&P 500 장기 우상향 주식 투자', data: {} },
+            ];
+            localStorage.setItem('userLogics', JSON.stringify(mockLogics));
+          }
+          const savedLogics = JSON.parse(localStorage.getItem('userLogics') || '[]');
+          setLogics(savedLogics);
+        }
+      } catch (e) {}
+    };
+    bootstrapLogics();
 
     const loadKeysAndFetchAssets = async () => {
       try {
@@ -93,6 +117,21 @@ const App = () => {
     loadKeysAndFetchAssets();
   }, []);
 
+  // 모든 로직을 백그라운드 루틴으로 실행 (간단한 타이머 기반)
+  useEffect(() => {
+    if (!runAllInBackground) return;
+    const id = setInterval(() => {
+      try {
+        logics.forEach((l) => {
+          if (!l?.data?.buyGraph || !l?.data?.sellGraph) return;
+          // 간단히 콘솔에만 로그 남김
+          runLogic(l.stock ?? '', { buyGraph: l.data.buyGraph, sellGraph: l.data.sellGraph }, () => {}, false);
+        });
+      } catch {}
+    }, 30000); // 30초마다 실행
+    return () => clearInterval(id);
+  }, [runAllInBackground, logics]);
+
   // 테마를 documentElement에 반영
   useEffect(() => {
     try {
@@ -118,22 +157,34 @@ const App = () => {
     setNewLogicName('');
   };
     
-  const handleSaveLogic = (updatedLogic) => {
+  const handleSaveLogic = async (updatedLogic) => {
     const newLogics = [...logics];
     const index = newLogics.findIndex(l => l.id === updatedLogic.id);
-    if (index > -1) {
-      newLogics[index] = updatedLogic; // 기존 로직 업데이트
-    } else {
-      newLogics.push(updatedLogic); // 새 로직 추가
-    }
+    if (index > -1) newLogics[index] = updatedLogic; else newLogics.push(updatedLogic);
     setLogics(newLogics);
-    localStorage.setItem('userLogics', JSON.stringify(newLogics));
+    try {
+      // @ts-ignore
+      if (window.electronAPI && window.electronAPI.saveAllLogics) {
+        // @ts-ignore
+        await window.electronAPI.saveAllLogics(newLogics);
+      } else {
+        localStorage.setItem('userLogics', JSON.stringify(newLogics));
+      }
+    } catch {}
   };
 
-  const handleDeleteLogic = (logicIdToDelete) => {
+  const handleDeleteLogic = async (logicIdToDelete) => {
     const newLogics = logics.filter(logic => logic.id !== logicIdToDelete);
     setLogics(newLogics);
-    localStorage.setItem('userLogics', JSON.stringify(newLogics));
+    try {
+      // @ts-ignore
+      if (window.electronAPI && window.electronAPI.saveAllLogics) {
+        // @ts-ignore
+        await window.electronAPI.saveAllLogics(newLogics);
+      } else {
+        localStorage.setItem('userLogics', JSON.stringify(newLogics));
+      }
+    } catch {}
     console.log('로직이 삭제되었습니다.');
   };
 
@@ -227,7 +278,18 @@ const App = () => {
           onLogicClick={handleLogicClick}
           onAddNewLogic={handleAddNewLogic}
           onDeleteLogic={handleDeleteLogic}
-          onReorderLogics={setLogics}
+          onReorderLogics={async (items)=>{
+            setLogics(items);
+            try {
+              // @ts-ignore
+              if (window.electronAPI && window.electronAPI.saveAllLogics) {
+                // @ts-ignore
+                await window.electronAPI.saveAllLogics(items);
+              } else {
+                localStorage.setItem('userLogics', JSON.stringify(items));
+              }
+            } catch {}
+          }}
           onRefreshAssets={handleRefreshAssets}
           onOpenApiKeySettings={() => setShowApiKeySettings(true)}
           showApiKeySettings={showApiKeySettings}

@@ -15,6 +15,8 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const [logs, setLogs] = useState([]);
     const [theme, setTheme] = useState('dark');
     const [logRunDetails, setLogRunDetails] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
+    const runTimerRef = useRef(null);
     const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
     const { editorRef: sellEditorRef, areaRef: sellAreaRef, ready: sellReady } = useReteAppEditor(sellCanvasRef);
@@ -126,22 +128,29 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         // 노드 드래그 시작 핸들러
         const onDragStart = useCallback((e, kind) => {
             e.dataTransfer.effectAllowed = 'copy';
-            try {
-                e.dataTransfer.setData('application/x-rete-node', kind);
-            } catch {
-                e.dataTransfer.setData('text/plain', kind);
-            }
+            try { e.dataTransfer.setData('application/x-rete-node', kind); } catch {}
+            try { e.dataTransfer.setData('text/plain', kind); } catch {}
         }, []);
 
         const extractKind = (dt) => {
             if (!dt) return null;
-            return dt.getData('application/x-rete-node') || dt.getData('text/plain') || null;
+            const raw = (dt.getData('application/x-rete-node') || dt.getData('text/plain') || '').trim();
+            if (!raw) return null;
+            const allowed = ['const','currentPrice','highestPrice','rsi','roi','sma','compare','logicOp','buy','sell','rl','branch'];
+            // exact match 우선
+            if (allowed.includes(raw)) return raw;
+            // 다중 줄/문자 포함 시 포함 여부로 추출
+            const lower = raw.toLowerCase();
+            const found = allowed.find(k => lower.includes(k.toLowerCase()));
+            return found || null;
         };
 
         const handleDropOn = useCallback(async (e, which) => {
             e.preventDefault();
             const kind = extractKind(e.dataTransfer);
             if (!kind) return;
+            const allowed = ['const','currentPrice','highestPrice','rsi','roi','sma','compare','logicOp','buy','sell','rl','branch'];
+            if (!allowed.includes(kind)) { console.warn('드롭된 kind 무시:', kind); return; }
 
             // 그래프별 제한 규칙 적용
             if (which === 'buy') {
@@ -197,6 +206,29 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         } catch (e) {
             console.error('저장 중 오류:', e);
         }
+    };
+
+    const startRun = () => {
+        if (isRunning) return;
+        setIsRunning(true);
+        // 주기적으로 실행 (예: 2초마다)
+        runTimerRef.current = setInterval(() => {
+            try {
+                const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+                const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+                runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetails);
+            } catch (e) {
+                appendLog('Error', String(e?.message || e));
+            }
+        }, 2000);
+    };
+
+    const stopRun = () => {
+        if (runTimerRef.current) {
+            clearInterval(runTimerRef.current);
+            runTimerRef.current = null;
+        }
+        setIsRunning(false);
     };
 
   return (
@@ -261,7 +293,8 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                             { label: 'HighestPrice(최고가)', kind: 'highestPrice' },
                             { label: 'RSI(투자지표)', kind: 'rsi' },
                             { label: 'ROI(수익률)', kind: 'roi' },
-                            { label: 'SMA(단순 이동 평균)', kind: 'sma' }
+                            { label: 'SMA(단순 이동 평균)', kind: 'sma' },
+                            { label: 'RL(강화학습 신호)', kind: 'rl' }
                         ]
                     },
                     
@@ -369,17 +402,26 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                     />
                     실행 과정 출력하기
                 </label>
-                <button
-                    className="w-full p-3 mt-4 text-lg font-semibold text-white rounded-lg bg-cyan-600 hover:bg-cyan-500 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]"
-                    onClick={() => {
-                            const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
-                            const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-                            runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetails);
-                        }
-                    }
-                >
-                    로직 실행
-                </button>
+                {!isRunning ? (
+                    <button
+                        className="w-full p-3 mt-4 text-lg font-semibold text-white rounded-lg bg-cyan-600 hover:bg-cyan-500 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]"
+                        onClick={startRun}
+                    >
+                        로직 실행하기
+                    </button>
+                ) : (
+                    <>
+                        <div className="mt-3 mb-1 text-sm text-emerald-300 flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> 실행 중…
+                        </div>
+                        <button
+                            className="w-full p-3 mt-2 text-lg font-semibold text-white rounded-lg bg-red-600 hover:bg-red-500 shadow-[0_10px_30px_-10px_rgba(239,68,68,0.5)]"
+                            onClick={stopRun}
+                        >
+                            정지하기
+                        </button>
+                    </>
+                )}
                 <button
                     className="w-full p-3 mt-4 text-lg font-semibold text-gray-200 bg-neutral-800 rounded-lg hover:bg-neutral-700 border border-neutral-700"
                     onClick={clearLogs}

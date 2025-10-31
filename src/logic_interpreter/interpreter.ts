@@ -1,6 +1,6 @@
 import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
-import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
+import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, RLSignalAST} from "./ast";
 
 let dummydata = [1];
 function* RLRunningRoutine(log: (title: string, msg: string) => void) {
@@ -167,6 +167,8 @@ class Interpreter {
                 return new HighestPriceAST(tryParseInt(node.controls.periodLength), String(node.controls.periodUnit ?? 'day'));
             case "rsi":
                 return new RsiAST();
+            case "rl":
+                return new RLSignalAST(String(node.controls.model ?? 'default'));
             case "sma":
                 return new SmaAST(tryParseInt(node.controls.period));
             case "roi":

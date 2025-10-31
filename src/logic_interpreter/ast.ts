@@ -134,6 +134,26 @@ export class SmaAST implements AST {
     }
 }
 
+// 간단한 RL 신호 (데모용)
+export class RLSignalAST implements AST {
+    model: string;
+    constructor(model: string = 'default') {
+        this.model = model;
+    }
+    calcValue() {
+        // 데모: -1 ~ 1 사이 신호 값
+        return -1 + Math.random() * 2;
+    }
+    evaluate() {
+        return this.calcValue();
+    }
+    evaluateDetailed(log: (msg: string) => void) {
+        const v = this.calcValue();
+        log(`RL(${this.model}) signal: ${v.toFixed(3)}`);
+        return v;
+    }
+}
+
 export class LogicOpAST implements AST {
     operator: string;
     childA: AST;

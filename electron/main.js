@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SignJWT } from 'jose';
 import { v4 as uuidv4 } from 'uuid';
@@ -119,4 +120,49 @@ ipcMain.handle('RL:start', () => {
 // IPC: RL 프로세스 종료
 ipcMain.handle('RL:stop', () => {
   stopRLProcess();
+});
+
+// ---------------- Logic persistence (single JSON file) ----------------
+const logicFilePath = () => path.join(app.getPath('userData'), 'logics.json');
+
+ipcMain.handle('logics:loadAll', async () => {
+  try {
+    const file = logicFilePath();
+    if (!fs.existsSync(file)) return [];
+    const raw = fs.readFileSync(file, 'utf-8');
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) return arr;
+    return [];
+  } catch (e) {
+    console.error('logics:loadAll failed', e);
+    return [];
+  }
+});
+
+ipcMain.handle('logics:saveAll', async (event, logics) => {
+  try {
+    const file = logicFilePath();
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(logics ?? [], null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    console.error('logics:saveAll failed', e);
+    throw e;
+  }
+});
+
+ipcMain.handle('logics:deleteById', async (event, id) => {
+  try {
+    const file = logicFilePath();
+    if (!fs.existsSync(file)) return true;
+    const raw = fs.readFileSync(file, 'utf-8');
+    const arr = JSON.parse(raw);
+    const next = Array.isArray(arr) ? arr.filter((l) => l?.id !== id) : [];
+    fs.writeFileSync(file, JSON.stringify(next, null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    console.error('logics:deleteById failed', e);
+    throw e;
+  }
 });

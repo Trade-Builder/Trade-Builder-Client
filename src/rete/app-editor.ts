@@ -17,6 +17,7 @@ export type NodeKind =
     'stock'
     | 'const'
     | 'roi'
+    | 'rl'
     | 'currentPrice'
     | 'highestPrice'
     | 'rsi'
@@ -66,6 +67,21 @@ export class ROINode extends TradeNode {
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '수익률'))
         this.kind = 'roi'
         this.category = 'supplier'
+    }
+}
+
+// RL 신호 공급 노드 (간단한 값 출력)
+export class RLNode extends TradeNode {
+    constructor() {
+        super('RL')
+        this.addOutput('value', new ClassicPreset.Output(numberSocket, '신호'))
+        // 추후: 모델/마켓 등 설정 추가 가능
+        this.addControl('model', new ClassicPreset.InputControl('text', { initial: 'default' as any }))
+        this.kind = 'rl'
+        this.category = 'supplier'
+        this._controlHints = {
+            model: { label: '모델', title: '사용할 RL 모델 이름 (데모)' }
+        }
     }
 }
 
@@ -407,6 +423,8 @@ export function createNodeByKind(kind: NodeKind): TradeNode {
         // Supplier / Sources
         case 'roi':
             return new ROINode()
+        case 'rl':
+            return new RLNode()
         case 'const':
             return new ConstNode()
         // Calculator
