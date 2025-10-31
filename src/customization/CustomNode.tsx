@@ -2,7 +2,7 @@
 Presets.classic의 RefSocket/RefControl로 입력·출력 소켓과 컨트롤을 정렬·렌더링함.*/
 
 import { type ClassicScheme, type RenderEmit, Presets } from "rete-react-plugin";
-import { type JSX } from "react";
+import { type JSX, useEffect, useState } from "react";
 import styled, { css, type FlattenSimpleInterpolation } from "styled-components";
 import { $nodewidth, $socketmargin, $socketsize } from "./vars";
 
@@ -109,6 +109,110 @@ export const NodeStyles = styled.div<
   ${(props) => props.styles && props.styles(props)}
 `;
 
+// 간단한 React 기반 커스텀 드롭다운(기존 enhancer의 스타일을 최대한 유지)
+function Dropdown(props: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { options } = props;
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState(props.value ?? options[0]);
+
+  useEffect(() => {
+    setVal(props.value ?? options[0]);
+  }, [props.value, options]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (ev: MouseEvent) => {
+      const target = ev.target as HTMLElement | null;
+      // close if click outside container
+      if (!target) return setOpen(false);
+      // allow because we attach handler on capture via element containment check below
+    };
+    window.addEventListener("mousedown", onDoc, { once: true });
+    return () => window.removeEventListener("mousedown", onDoc as any);
+  }, [open]);
+
+  const select = (v: string) => {
+    setVal(v);
+    setOpen(false);
+    props.onChange(v);
+  };
+
+  return (
+    <div className="relative" style={{ width: '100%', display: 'block' }}>
+      <button
+        type="button"
+        className={[
+          "w-full",
+          "px-3",
+          "py-2",
+          "text-sm",
+          "rounded-md",
+          "border",
+          "outline-none",
+          open ? "ring-2 ring-cyan-400/40" : "",
+          "flex",
+          "items-center",
+          "justify-between",
+        ].join(" ")}
+        style={{
+          background: "var(--control-bg)",
+          borderColor: "var(--control-border)",
+          color: "var(--control-fg)",
+          width: "100%",
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <span className="truncate text-left">{val}</span>
+        <span className="ml-2 text-gray-400 select-none">▾</span>
+      </button>
+      <ul
+        className={[
+          "absolute",
+          "left-0",
+          "right-0",
+          "mt-1",
+          "rounded-md",
+          "border",
+          "shadow-xl",
+          "z-[1100]",
+          open ? "" : "hidden",
+        ].join(" ")}
+        style={{
+          background: "var(--control-bg)",
+          borderColor: "var(--control-border)",
+          maxHeight: 'none',
+          overflow: 'visible',
+        }}
+      >
+        {options.map((opt) => (
+          <li
+            key={opt}
+            className="px-3 py-2 text-sm cursor-pointer"
+            style={{ color: "var(--control-fg)" }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLLIElement).style.background = "rgba(51,65,85,0.2)")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLLIElement).style.background = "transparent")
+            }
+            onClick={() => select(opt)}
+          >
+            {opt}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function sortByIndex<T extends [string, undefined | { index?: number }][]>(
   entries: T
 ) {
@@ -196,6 +300,51 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
       {controls.map(([key, control]) => {
         if (!control) return null;
         const lbl = resolveLabel(key);
+
+        // 직접 렌더 select: 특정 노드/키 조합에 대해 드롭다운 렌더링
+        const nodeLabel = String(label);
+        const getSelectOptions = (nodeLabel: string, key: string): string[] | undefined => {
+          switch (nodeLabel) {
+            case 'Buy':
+              if (key === 'orderType') return ['market', 'limit'];
+              break;
+            case 'Sell':
+              if (key === 'orderType') return ['market', 'limit'];
+              break;
+            case 'HighestPrice':
+              if (key === 'periodUnit') return ['day', 'week', 'month', 'year'];
+              break;
+            case 'Compare':
+              if (key === 'operator') return ['>', '≥', '=', '<', '≤', '≠'];
+              break;
+            case 'LogicOp':
+              if (key === 'operator') return ['and', 'or'];
+              break;
+          }
+          return undefined;
+        };
+
+        const opts = getSelectOptions(nodeLabel, key);
+        if (opts) {
+          const ctrl: any = control as any;
+          const value: string = (typeof ctrl.getValue === 'function' ? ctrl.getValue() : ctrl.value) ?? opts[0];
+          const onChange = (v: string) => {
+            try {
+              if (typeof ctrl.setValue === 'function') ctrl.setValue(v);
+              else ctrl.value = v;
+            } catch {}
+          };
+          return (
+            <div key={key} className="control-row">
+              {lbl && <div className="control-label">{lbl}</div>}
+              <div className="control">
+                <Dropdown options={opts} value={value} onChange={onChange} />
+              </div>
+            </div>
+          );
+        }
+
+        // 기본 컨트롤은 기존처럼 RefControl 렌더
         return (
           <div key={key} className="control-row">
             {lbl && <div className="control-label">{lbl}</div>}
