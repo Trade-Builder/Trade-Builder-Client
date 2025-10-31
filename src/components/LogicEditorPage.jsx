@@ -15,6 +15,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const [logs, setLogs] = useState([]);
     const [theme, setTheme] = useState('dark');
     const [logRunDetails, setLogRunDetails] = useState(false);
+    const logRunDetailsRef = useRef(false);
     const [isRunning, setIsRunning] = useState(false);
     const runTimerRef = useRef(null);
     const infoAreaRef = useRef(null);
@@ -55,6 +56,11 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             document.documentElement.setAttribute('data-theme', next);
         } catch {}
     }, []);
+
+    // logRunDetails 최신 값을 interval 콜백에서 사용할 수 있도록 ref로 동기화
+    useEffect(() => {
+        logRunDetailsRef.current = logRunDetails;
+    }, [logRunDetails]);
 
     const toggleTheme = useCallback(() => {
         setTheme((t) => {
@@ -212,15 +218,18 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         if (isRunning) return;
         setIsRunning(true);
         // 주기적으로 실행 (예: 2초마다)
-        runTimerRef.current = setInterval(() => {
+        const runOnce = () => {
             try {
                 const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
                 const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-                runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetails);
+                runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetailsRef.current);
             } catch (e) {
                 appendLog('Error', String(e?.message || e));
             }
-        }, 2000);
+        };
+        // 시작 즉시 한 번 실행하여 반응성을 높임
+        runOnce();
+        runTimerRef.current = setInterval(runOnce, 2000);
     };
 
     const stopRun = () => {
