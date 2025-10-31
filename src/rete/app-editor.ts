@@ -84,7 +84,8 @@ export class HighestPriceNode extends TradeNode {
     constructor() {
         super('HighestPrice')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '최고가'))
-        this.addControl('periodLength', new ClassicPreset.InputControl('number', { initial: 1 }))
+        // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
+        this.addControl('periodLength', new ClassicPreset.InputControl('text', { initial: 1 as any }))
         // periodUnit: dropdown (day|week|month) - 내부 값은 text control을 유지하고 UI는 나중에 select로 교체
         this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'highestPrice'
@@ -112,7 +113,8 @@ export class SMANode extends TradeNode {
     constructor() {
         super('SMA')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, 'SMA'))
-        this.addControl('period', new ClassicPreset.InputControl('number', { initial: 20 }))
+        // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
+        this.addControl('period', new ClassicPreset.InputControl('text', { initial: 20 as any }))
         this.kind = 'sma'
         this.category = 'supplier'
         this._controlHints = {
@@ -126,7 +128,8 @@ export class ConstNode extends TradeNode {
     constructor() {
         super('Const')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '값'))
-        this.addControl('value', new ClassicPreset.InputControl('number', { initial: 0 }))
+        // number -> text 로 변경: 사용자가 백스페이스로 값을 비워둘 수 있도록 함
+        this.addControl('value', new ClassicPreset.InputControl('text', { initial: 0 as any }))
         this.kind = 'const'
         this.category = 'supplier'
         this._controlHints = {
@@ -178,8 +181,9 @@ export class BuyNode extends TradeNode {
         this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool')) //bool 값을 받음
         // this.addOutput('out', new ClassicPreset.Output(flowSocket, '다음'))
         this.addControl('orderType', new ClassicPreset.InputControl('text', { initial: 'market' })) // market|limit
-        this.addControl('limitPrice', new ClassicPreset.InputControl('number', { initial: 100 }))
-        this.addControl('sellPercent', new ClassicPreset.InputControl('number', { initial: 2 }))
+        // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
+        this.addControl('limitPrice', new ClassicPreset.InputControl('text', { initial: 100 as any }))
+        this.addControl('sellPercent', new ClassicPreset.InputControl('text', { initial: 2 as any }))
         this.kind = 'buy'
         this.category = 'consumer'
         this._controlHints = {
@@ -197,8 +201,9 @@ export class SellNode extends TradeNode {
         this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
         // this.addOutput('out', new ClassicPreset.Output(flowSocket, '다음'))
         this.addControl('orderType', new ClassicPreset.InputControl('text', { initial: 'market' })) // market|limit
-        this.addControl('limitPrice', new ClassicPreset.InputControl('number', { initial: 100 }))
-        this.addControl('sellPercent', new ClassicPreset.InputControl('number', { initial: 2 }))
+        // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
+        this.addControl('limitPrice', new ClassicPreset.InputControl('text', { initial: 100 as any }))
+        this.addControl('sellPercent', new ClassicPreset.InputControl('text', { initial: 2 as any }))
         this.kind = 'sell'
         this.category = 'consumer'
         this._controlHints = {
@@ -276,7 +281,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         // 1. 노드가 없거나 라벨이 일치하지 않으면 종료
         if (!node || node.label !== cfg.labelMatch) return
         let attempts = 0
-        const MAX_ATTEMPTS = 5 // DOM 요소 로딩을 기다리며 최대 5회 재시도한다.
+    const MAX_ATTEMPTS = 15 // DOM 요소 로딩/포커스 경쟁을 기다리며 최대 15회 재시도한다.
         // 실제 UI 강화 로직을 담고 있는 함수로, try-catch 구문을 이용해 비동기적으로 실행된다.
         const tryEnhance = () => {
             attempts++
@@ -317,6 +322,19 @@ export async function createAppEditor(container: HTMLElement): Promise<{
 
                 // 이미 교체된 input이라면 로직을 더 진행하지 않고 종료한다.
                 if ((targetInput as any).dataset.replaced === '1') return
+
+                // 현재 사용자가 노드 안의 다른 input에 포커스하여 타이핑 중이면,
+                // 드롭다운 초기화(특히 setValue로 인한 리렌더)를 잠시 미룬다.
+                const activeEl = document.activeElement as HTMLElement | null
+                if (
+                    activeEl &&
+                    activeEl !== targetInput &&
+                    el.contains(activeEl) &&
+                    activeEl.tagName === 'INPUT'
+                ) {
+                    if (attempts < MAX_ATTEMPTS) return requestAnimationFrame(tryEnhance)
+                    else return
+                }
 
                 // 6. 드롭다운 UI 생성 (커스텀 구현: 원본 input을 숨기고, 버튼+목록으로 대체)
                 const ti = targetInput as HTMLInputElement
@@ -398,10 +416,14 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                 labelSpan.textContent = currentVal ?? ''
 
                 // 8. 노드 컨트롤의 값을 현재 값으로 보정하여 동기화한다.
+                //    단, 동일 값이면 setValue를 호출하지 않아 불필요한 리렌더로 사용자 입력이 사라지는 문제를 방지한다.
                 try {
                     if (ctrl) {
-                        if (typeof ctrl.setValue === 'function') ctrl.setValue(currentVal)
-                        else ctrl.value = currentVal
+                        const prev = typeof ctrl.getValue === 'function' ? ctrl.getValue() : ctrl.value
+                        if (prev !== currentVal) {
+                            if (typeof ctrl.setValue === 'function') ctrl.setValue(currentVal)
+                            else ctrl.value = currentVal
+                        }
                     }
                 } catch { }
 

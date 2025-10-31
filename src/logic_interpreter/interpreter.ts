@@ -1,6 +1,13 @@
 import type { AST } from "./ast";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
 
+// 입력 컨트롤이 HTML input type="text"로 바뀌어도 동작하도록 숫자 강제 파싱 유틸
+function asNumber(v: any, fallback = 0): number {
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    const n = typeof v === 'string' ? Number(v.trim()) : Number(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
@@ -131,15 +138,15 @@ class Interpreter {
         const node = this.nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(node.controls.value);
+                return new ConstantAST(asNumber(node.controls.value));
             case "currentPrice":
                 return new CurrentPriceAST();
             case "highestPrice":
-                return new HighestPriceAST(node.controls.periodLength, node.controls.periodUnit);
+                return new HighestPriceAST(asNumber(node.controls.periodLength, 1), String(node.controls.periodUnit ?? 'day'));
             case "rsi":
                 return new RsiAST();
             case "sma":
-                return new SmaAST(node.controls.period);
+                return new SmaAST(asNumber(node.controls.period, 20));
             case "roi":
                 return new RoiAST();
             case "logicOp": {
@@ -208,8 +215,8 @@ class OrderData {
     }
 
     init(data: any) {
-        this.orderType = data.orderType;
-        this.limitPrice = data.limitPrice;
-        this.sellPercent = data.sellPercent;
+        this.orderType = String(data.orderType ?? 'market');
+        this.limitPrice = asNumber(data.limitPrice, 0);
+        this.sellPercent = asNumber(data.sellPercent, 0);
     }
 }
