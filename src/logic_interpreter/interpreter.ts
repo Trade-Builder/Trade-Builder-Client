@@ -1,7 +1,37 @@
 import type { AST } from "./ast";
+import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
 
+let dummydata = [1];
+function* RLRunningRoutine(log: (title: string, msg: string) => void) {
+    window.electronAPI.startRL();
+    yield wait(5000);
+    let RLServer = new RLConnection(log);
+    yield wait(2000);
+    RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
+    yield wait(1000);
+    for (let i = 200; i < dummydata.length; i++) {
+        RLServer.send({ action: "run", index: i, data: dummydata[i] });
+        yield wait(50);
+    }
+}
+
+function wait(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
+    const iterator = generatorFunc(log);
+
+    function step(result: IteratorResult<any>) {
+        if (result.done) return; // 끝났으면 종료
+        Promise.resolve(result.value).then(() => step(iterator.next()));
+    }
+    step(iterator.next());
+}
+
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
+    startCoroutine(RLRunningRoutine, logFunc);
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
     //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
@@ -131,15 +161,15 @@ class Interpreter {
         const node = this.nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(node.controls.value);
+                return new ConstantAST(tryParseInt(node.controls.value));
             case "currentPrice":
                 return new CurrentPriceAST();
             case "highestPrice":
-                return new HighestPriceAST(node.controls.periodLength, node.controls.periodUnit);
+                return new HighestPriceAST(tryParseInt(node.controls.periodLength), String(node.controls.periodUnit ?? 'day'));
             case "rsi":
                 return new RsiAST();
             case "sma":
-                return new SmaAST(node.controls.period);
+                return new SmaAST(tryParseInt(node.controls.period));
             case "roi":
                 return new RoiAST();
             case "logicOp": {
@@ -208,8 +238,15 @@ class OrderData {
     }
 
     init(data: any) {
-        this.orderType = data.orderType;
+        this.orderType = String(data.orderType ?? 'market');
         this.limitPrice = data.limitPrice;
         this.sellPercent = data.sellPercent;
     }
+}
+
+function tryParseInt(v: any): number {
+    if (isNaN(v)) {
+        throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
+    }
+    return parseInt(v);
 }
