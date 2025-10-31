@@ -1,40 +1,60 @@
 import type { AST } from "./ast";
-import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, RLSignalAST} from "./ast";
 
-let dummydata = [1];
-function* RLRunningRoutine(log: (title: string, msg: string) => void) {
-    window.electronAPI.startRL();
-    yield wait(5000);
-    let RLServer = new RLConnection(log);
-    yield wait(2000);
-    RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
-    yield wait(1000);
-    for (let i = 200; i < dummydata.length; i++) {
-        RLServer.send({ action: "run", index: i, data: dummydata[i] });
-        yield wait(50);
-    }
-}
+// let dummydata = [1];
+// 미사용 보조 루틴들은 보관만 하고 경고를 막기 위해 주석 처리.
+// function* RLRunningRoutine(log: (title: string, msg: string) => void) {
+//     window.electronAPI.startRL();
+//     yield wait(5000);
+//     let RLServer = new RLConnection(log);
+//     yield wait(2000);
+//     RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
+//     yield wait(1000);
+//     for (let i = 200; i < dummydata.length; i++) {
+//         RLServer.send({ action: "run", index: i, data: dummydata[i] });
+//         yield wait(50);
+//     }
+// }
 
-function wait(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+// function wait(ms: number) {
+//     return new Promise(resolve => setTimeout(resolve, ms));
+// }
 
-function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
-    const iterator = generatorFunc(log);
-
-    function step(result: IteratorResult<any>) {
-        if (result.done) return; // 끝났으면 종료
-        Promise.resolve(result.value).then(() => step(iterator.next()));
-    }
-    step(iterator.next());
-}
+// function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
+//     const iterator = generatorFunc(log);
+//
+//     function step(result: IteratorResult<any>) {
+//         if (result.done) return; // 끝났으면 종료
+//         Promise.resolve(result.value).then(() => step(iterator.next()));
+//     }
+//     step(iterator.next());
+// }
 
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
-    //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
     interpreter.run(logRunDetails);
+}
+
+// Build once and run many: 외부 러너가 파싱을 1회만 수행하고 반복 실행할 수 있도록 헬퍼 제공
+export function buildInterpreter(stock: string, logicData: any, logFunc: (title: string, msg: string) => void) {
+    const interpreter = new Interpreter(stock, logFunc);
+    interpreter.parse(logicData);
+    return interpreter;
+}
+
+export function runWithInterpreter(interpreter: any, logRunDetails: boolean, logFunc?: (title: string, msg: string) => void) {
+    try {
+        if (logFunc) {
+            // 최신 로그 콜백을 반영
+            (interpreter as any).log = logFunc;
+        }
+        interpreter.run(logRunDetails);
+    } catch (e: any) {
+        const logger = (interpreter as any)?.log;
+        if (typeof logger === 'function') logger('Error', String(e?.message ?? e));
+        else console.warn('Interpreter run error:', e);
+    }
 }
 
 class Interpreter {
@@ -220,11 +240,12 @@ class Interpreter {
         this.log("Sell", msg);
     }
 
-    private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
-        const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
-        const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
-        return [targetLogic.stock, targetLogic.data];
-    }
+    // private loadLogic() {
+    //     // 메인 화면에서 직접 실행할 때 사용할 수 있었던 유틸 (현재는 사용 안 함)
+    //     const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
+    //     const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
+    //     return [targetLogic.stock, targetLogic.data];
+    // }
 }
 
 class OrderData {
