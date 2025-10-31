@@ -1,18 +1,19 @@
 import type { AST } from "./ast";
+import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
 
-// 입력 컨트롤이 HTML input type="text"로 바뀌어도 동작하도록 숫자 강제 파싱 유틸
-function asNumber(v: any, fallback = 0): number {
-    if (typeof v === 'number' && !Number.isNaN(v)) return v;
-    const n = typeof v === 'string' ? Number(v.trim()) : Number(v);
-    return Number.isFinite(n) ? n : fallback;
-}
+// let rl:RLConnection | null = null;
 
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
+    // window.electronAPI.startRL();
+    // if (rl == null) {
+    //     rl = new RLConnection();
+    // }
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
     //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
     interpreter.run(logRunDetails);
+    //rl.send({ action: "test_message", content: "Hello from the interpreter!" });
 }
 
 class Interpreter {
@@ -138,15 +139,15 @@ class Interpreter {
         const node = this.nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(asNumber(node.controls.value));
+                return new ConstantAST(tryParseInt(node.controls.value));
             case "currentPrice":
                 return new CurrentPriceAST();
             case "highestPrice":
-                return new HighestPriceAST(asNumber(node.controls.periodLength, 1), String(node.controls.periodUnit ?? 'day'));
+                return new HighestPriceAST(tryParseInt(node.controls.periodLength), String(node.controls.periodUnit ?? 'day'));
             case "rsi":
                 return new RsiAST();
             case "sma":
-                return new SmaAST(asNumber(node.controls.period, 20));
+                return new SmaAST(tryParseInt(node.controls.period));
             case "roi":
                 return new RoiAST();
             case "logicOp": {
@@ -216,7 +217,14 @@ class OrderData {
 
     init(data: any) {
         this.orderType = String(data.orderType ?? 'market');
-        this.limitPrice = asNumber(data.limitPrice, 0);
-        this.sellPercent = asNumber(data.sellPercent, 0);
+        this.limitPrice = data.limitPrice;
+        this.sellPercent = data.sellPercent;
     }
+}
+
+function tryParseInt(v: any): number {
+    if (isNaN(v)) {
+        throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
+    }
+    return parseInt(v);
 }

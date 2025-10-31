@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   /**
@@ -25,12 +25,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('upbit:fetchAccounts', accessKey, secretKey),
 
   /**
-   * RL 모델 추론 요청
-   * @param {string} market
-   * @param {string} [timeframe='1h']
-   * @param {number} [count=200]
-   * @returns {Promise<Object>}
+   * Python 프로세스 시작
    */
-  predictWithRL: (market, timeframe = '1h', count = 200) =>
-    ipcRenderer.invoke('rl:predict', market, timeframe, count),
+  startRL: () => ipcRenderer.invoke('RL:start'),
+
+  /**
+   * Python 프로세스 종료
+   */
+  stopRL: () => ipcRenderer.invoke('RL:stop'),
 });

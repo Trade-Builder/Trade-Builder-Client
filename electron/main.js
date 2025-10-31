@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { SignJWT } from 'jose';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
-import { spawn } from 'node:child_process';
 import Store from 'electron-store';
+import { launchRLProcess, stopRLProcess } from './RLlauncher.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -17,10 +17,10 @@ const store = new Store({
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1920,
+    height: 1080,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -44,6 +44,11 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// 앱 종료 시 RL 프로세스도 함께 종료
+app.on('before-quit', () => {
+   stopRLProcess();
 });
 
 // IPC: API 키 저장
@@ -106,63 +111,12 @@ ipcMain.handle('upbit:fetchAccounts', async (event, accessKey, secretKey) => {
   }
 });
 
-// IPC: RL 모델 추론 (Python 실행)
-ipcMain.handle('rl:predict', async (event, market, timeframe = '1h', count = 200) => {
-  return new Promise((resolve, reject) => {
-    try {
-      console.log(`🤖 RL 모델 추론 시작: ${market} ${timeframe}`);
+// IPC: RL 프로세스 시작
+ipcMain.handle('RL:start', () => {
+  launchRLProcess();
+});
 
-      const scriptPath = path.join(__dirname, '..', 'RL-models', 'predict.py');
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-
-      const pythonProcess = spawn(pythonCmd, [
-        scriptPath,
-        '--market', market,
-        '--timeframe', timeframe,
-        '--count', count.toString(),
-      ]);
-
-      let stdout = '';
-      let stderr = '';
-
-      pythonProcess.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-        console.error(`Python stderr: ${data}`);
-      });
-
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(stdout);
-            if (result.success) {
-              console.log(`✅ RL 추론 성공: ${result.signal} (confidence: ${result.confidence})`);
-              resolve(result);
-            } else {
-              console.error(`❌ RL 추론 실패: ${result.error}`);
-              reject(new Error(result.error));
-            }
-          } catch (parseError) {
-            console.error('❌ JSON 파싱 실패:', stdout);
-            reject(new Error(`Failed to parse Python output: ${parseError.message}`));
-          }
-        } else {
-          console.error(`❌ Python 프로세스 종료 코드: ${code}`);
-          console.error(`stderr: ${stderr}`);
-          reject(new Error(`Python script exited with code ${code}: ${stderr}`));
-        }
-      });
-
-      pythonProcess.on('error', (error) => {
-        console.error('❌ Python 프로세스 실행 실패:', error);
-        reject(new Error(`Failed to start Python process: ${error.message}`));
-      });
-    } catch (error) {
-      console.error('❌ RL 추론 에러:', error);
-      reject(error);
-    }
-  });
+// IPC: RL 프로세스 종료
+ipcMain.handle('RL:stop', () => {
+  stopRLProcess();
 });
