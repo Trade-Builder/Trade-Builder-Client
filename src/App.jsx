@@ -17,8 +17,6 @@ const App = () => {
   const [assetsLoading, setAssetsLoading] = useState(true);
   const [assetsError, setAssetsError] = useState(null);
   const [runAllInBackground, setRunAllInBackground] = useState(true);
-  // 비동기 목록 갱신의 경합을 방지하기 위한 시퀀스 카운터
-  const listSeqRef = useRef(0);
 
   // API 키 관련 상태
   const [hasApiKeys, setHasApiKeys] = useState(false);

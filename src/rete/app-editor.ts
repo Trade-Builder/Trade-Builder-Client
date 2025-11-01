@@ -74,9 +74,9 @@ export class ROINode extends TradeNode {
 export class RLNode extends TradeNode {
     constructor() {
         super('AI 노드')
-        this.addOutput('value', new ClassicPreset.Output(numberSocket, '신호'))
+        this.addOutput('out', new ClassicPreset.Output(boolSocket, '신호'))
         // 기간 단위 설정만 제공 (minute|hour|day|month|year)
-        this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
+        // this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'rl'
         this.category = 'supplier'
         this._controlHints = {
@@ -131,7 +131,7 @@ export class SMANode extends TradeNode {
         this.addOutput('value', new ClassicPreset.Output(numberSocket, 'SMA'))
         // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
         this.addControl('period', new ClassicPreset.InputControl('text', { initial: 20 as any }))
-        this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
+        // this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'sma'
         this.category = 'supplier'
         this._controlHints = {

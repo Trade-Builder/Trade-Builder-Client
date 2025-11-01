@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
-import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { launchRLProcess, stopRLProcess } from './rl_launcher.js';
+import Store from 'electron-store';
 import {
   listLogics as ls_listLogics,
   createLogic as ls_createLogic,
@@ -28,6 +28,8 @@ import {
   limitSellWithKRW,
   sellAll
 } from './upbit_api_manager.js';
+
+const store = new Store({encryptionKey: 'trade-builder-encryption-key-2024'});
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -145,13 +147,15 @@ ipcMain.handle('logics:reorder', async (event, ids) => {
   try { return await ls_reorderLogics(ids); } catch (e) { console.error('logics:reorder failed', e); throw e; }
 });
 
-// per-logic api keys
+// // ---------------- API keys ----------------
 ipcMain.handle('logics:loadKeys', async (event, id) => {
   try { return await ls_loadLogicApiKeys(id); } catch (e) { console.error('logics:loadKeys failed', e); return null; }
 });
 ipcMain.handle('logics:saveKeys', async (event, id, accessKey, secretKey) => {
   try { return await ls_saveLogicApiKeys(id, accessKey, secretKey); } catch (e) { console.error('logics:saveKeys failed', e); throw e; }
 });
+
+// ---------------- Upbit API ----------------
 // IPC: Upbit 캔들 데이터 조회
 ipcMain.handle('upbit:fetchCandles', async (event, market, period = 1, count = 200) => {
   return await fetchCandles(market, period, count);

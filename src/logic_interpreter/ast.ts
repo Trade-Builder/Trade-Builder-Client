@@ -19,10 +19,9 @@ export abstract class SupplierAST implements AST {
     abstract evaluateDetailed(log: (msg: string) => void): number | boolean;
 }
 
-export class ConstantAST extends SupplierAST {
+export class ConstantAST implements AST {
     value: number;
-    constructor(manager: APIManager, value: number) {
-        super(manager);
+    constructor(value: number) {
         this.value = value;
     }
 
@@ -130,12 +129,10 @@ export class RoiAST extends SupplierAST {
 
 export class SmaAST extends SupplierAST {
     period: number;
-    periodUnit: string;
 
-    constructor(manager: APIManager, period: number, periodUnit: string) {
+    constructor(manager: APIManager, period: number) {
         super(manager);
         this.period = period;
-        this.periodUnit = periodUnit;
     }
 
     calcValue() {
@@ -150,27 +147,26 @@ export class SmaAST extends SupplierAST {
 
     evaluateDetailed(log: (msg: string) => void) {
         const value = this.calcValue();
-        log(`SMA(${this.period}${this.periodUnit}) value: ${value.toFixed(2)}`);
+        log(`SMA(${this.period}) value: ${value.toFixed(2)}`);
         return value;
     }
 }
 
 // 간단한 RL 신호 (데모용)
 export class RLSignalAST implements AST {
-    periodUnit: string;
-    constructor(periodUnit: string = 'day') {
-        this.periodUnit = periodUnit;
+    constructor() {
+
     }
     calcValue() {
         // 데모: -1 ~ 1 사이 신호 값
-        return -1 + Math.random() * 2;
+        return Math.random() < 0.5;
     }
     evaluate() {
         return this.calcValue();
     }
     evaluateDetailed(log: (msg: string) => void) {
         const v = this.calcValue();
-        log(`RL(unit=${this.periodUnit}) signal: ${v.toFixed(3)}`);
+        log(`RL signal: ${v}`);
         return v;
     }
 }

@@ -175,21 +175,21 @@ class Interpreter {
         const node = nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(this.dataManager, tryParseInt(node.controls.value));
+                return new ConstantAST(tryParseInt(node.controls.value));
             case "currentPrice":
                 return new CurrentPriceAST(this.dataManager);
             case "highestPrice":
                 return new HighestPriceAST(this.dataManager, tryParseInt(node.controls.periodLength), node.controls.periodUnit);
             case "rsi":
-                return new RsiAST();
+                return new RsiAST(this.dataManager);
             case "rl":
-                return new RLSignalAST(String(node.controls.periodUnit ?? 'day'));
+                return new RLSignalAST();
             case "sma":
                 const val = tryParseInt(node.controls.period);
                 if (val > 200) {
                     throw new Error("SMA 기간은 최대 200까지 설정할 수 있습니다.");
                 }
-                return new SmaAST(this.dataManager, val, node.controls.periodUnit));
+                return new SmaAST(this.dataManager, val);
             case "roi":
                 return new RoiAST(this.dataManager);
             case "logicOp": {

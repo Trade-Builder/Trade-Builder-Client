@@ -8,10 +8,14 @@ import { getCurrentPrices } from '../communicator/upbit_api';
 // ----------------------------------------------------------------
 const AssetPage = ({
   logics,
+  assets,
+  assetsLoading,
+  assetsError,
   onLogicClick,
   onDeleteLogic,
   onReorderLogics,
   onCreateLogic,
+  onRefreshAssets,
   onOpenApiKeySettings,
   showApiKeySettings,
   onCloseApiKeySettings,

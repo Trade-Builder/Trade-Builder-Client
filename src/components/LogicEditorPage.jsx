@@ -261,32 +261,6 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         }
     };
 
-    const startRun = () => {
-        if (isRunning) return;
-        setIsRunning(true);
-        // 주기적으로 실행 (예: 2초마다)
-        const runOnce = () => {
-            try {
-                const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
-                const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-                runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetailsRef.current);
-            } catch (e) {
-                appendLog('Error', String(e?.message || e));
-            }
-        };
-        // 시작 즉시 한 번 실행하여 반응성을 높임
-        runOnce();
-        runTimerRef.current = setInterval(runOnce, 2000);
-    };
-
-    const stopRun = () => {
-        if (runTimerRef.current) {
-            clearInterval(runTimerRef.current);
-            runTimerRef.current = null;
-        }
-        setIsRunning(false);
-    };
-
   return (
     <div className="w-full max-w-[1900px] h-[100vh] p-4 sm:p-6 lg:p-8 rounded-3xl shadow-2xl flex flex-col bg-neutral-950 text-gray-200 border border-neutral-800/70">
         {/* 상단 헤더: 로직 이름 수정 및 거래소/종목 선택 + 저장/뒤로가기 버튼 */}
@@ -493,7 +467,11 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 {!isRunning ? (
                     <button
                         className="w-full p-3 mt-4 text-lg font-semibold text-white rounded-lg bg-cyan-600 hover:bg-cyan-500 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]"
-                        onClick={startRun}
+                        onClick={() => {
+                            const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+                            const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+                            runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetailsRef.current);
+                        }}
                     >
                         로직 실행하기
                     </button>
@@ -504,7 +482,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                         </div>
                         <button
                             className="w-full p-3 mt-2 text-lg font-semibold text-white rounded-lg bg-red-600 hover:bg-red-500 shadow-[0_10px_30px_-10px_rgba(239,68,68,0.5)]"
-                            onClick={stopRun}
+                            //onClick={stopRun}
                         >
                             정지하기
                         </button>
