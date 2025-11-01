@@ -1,21 +1,19 @@
 
 export class RLConnection {
 	private socket: WebSocket;
-	private log: (title: string, msg: string) => void;
 
-	constructor(log: (title: string, msg: string) => void) {
+	constructor() {
 		this.socket = this.makeSocket();
-		this.log = log;
 	}
 
 	private makeSocket() {
 		const socket = new WebSocket("ws://127.0.0.1:5577");
 		socket.onopen = () => {
-			this.log("Info","RL: WebSocket connected");
+			console.log("Info","RL: WebSocket connected");
 		};
 
 		socket.onerror = (error) => {
-			this.log("Error","RL: " + error);
+			console.error("Error","RL: " + error);
 			setTimeout(() => {
 				this.socket = this.makeSocket();
 			}, 5000);
@@ -30,7 +28,7 @@ export class RLConnection {
 
 	public async send(data: any) {
 		if (this.socket.readyState !== WebSocket.OPEN) {
-			this.log("Error","socket are not opened yet");
+			console.error("Error","socket are not opened yet");
 			return;
 		}
 		try {
@@ -38,7 +36,7 @@ export class RLConnection {
 			this.socket.send(txt);
 			console.log(txt);
 		} catch (err) {
-			this.log("Error","RL: Failed to send message: " + err);
+			console.error("Error","RL: Failed to send message: " + err);
 		}
 	};
 
