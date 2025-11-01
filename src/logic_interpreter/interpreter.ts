@@ -12,7 +12,7 @@ function* RLRunningRoutine(log: (title: string, msg: string) => void) {
     yield wait(1000);
     for (let i = 200; i < dummydata.length; i++) {
         RLServer.send({ action: "run", index: i, data: dummydata[i] });
-        yield wait(50);
+        yield wait(500);
     }
 }
 
@@ -31,6 +31,7 @@ function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => vo
 }
 
 export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
+    //startCoroutine(RLRunningRoutine, logFunc);
     let interpreter = new Interpreter(stock, logFunc);
     interpreter.parse(logicData);
     //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
