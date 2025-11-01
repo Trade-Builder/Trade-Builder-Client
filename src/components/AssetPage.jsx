@@ -64,7 +64,7 @@ const AssetPage = ({
       const balance = parseFloat(asset.balance) || 0;
       const market = `KRW-${asset.currency}`;
       const currentPrice = currentPrices[market];
-      const todayOpenPrice = currentPrices[`${market}_open`]; // 시가 정보가 필요합니다
+      const todayOpenPrice = currentPrices[`${market}_open`];
 
       if (currentPrice && todayOpenPrice) {
         // 보유 수량 * (현재가 - 오늘시가)
@@ -304,7 +304,7 @@ const AssetPage = ({
         },{
           title:'누적 ROI', value: `${roi.toFixed(2)}%`
         },{
-          title:'오늘 P/L', value: `₩${todayPnL.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`
+          title:'오늘 P/L', value: `₩${Math.abs(todayPnL) < 0.01 ? 0 : todayPnL.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`
         }].map((s,idx)=> (
           <div key={idx} className="p-5 rounded-2xl bg-neutral-900/70 border border-neutral-800/70 hover:border-cyan-500/40 transition">
             <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">{s.title}</div>

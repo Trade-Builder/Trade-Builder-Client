@@ -626,6 +626,48 @@ export async function getCurrentPrice(market) {
 }
 
 /**
+ * 현재가 일괄 조회 (여러 마켓 동시 조회)
+ * @param {string[]} markets - 마켓 코드 배열 (예: ['KRW-BTC', 'KRW-ETH'])
+ * @returns {Promise<{success: boolean, data?: {[market: string]: number}, error?: any}>}
+ */
+export async function getCurrentPrices(markets) {
+  try {
+    if (!markets || markets.length === 0) {
+      return {
+        success: true,
+        data: {}
+      };
+    }
+
+    const API_ENDPOINT = `https://api.upbit.com/v1/ticker`;
+    const params = { markets: markets.join(',') };
+
+    const response = await axios.get(API_ENDPOINT, { params });
+
+    // 응답 데이터를 { 'KRW-BTC': 50000000, 'KRW-ETH': 3000000 } 형태로 변환
+    const priceData = {};
+    response.data.forEach(ticker => {
+      priceData[ticker.market] = ticker.trade_price;
+      // 오늘의 시가(opening_price)도 저장 - P/L 계산에 사용
+      priceData[`${ticker.market}_open`] = ticker.opening_price;
+    });
+
+    console.log(`[현재가 일괄 조회] ${markets.length}개 마켓 조회 완료`);
+    return {
+      success: true,
+      data: priceData
+    };
+  } catch (error) {
+    const errorMessage = error.response ? error.response.data : error.message;
+    console.error('[현재가 일괄 조회 실패]', errorMessage);
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+/**
  * 현재가로 지정가 매수 (간편 함수)
  * @param {string} accessKey - Access Key
  * @param {string} secretKey - Secret Key

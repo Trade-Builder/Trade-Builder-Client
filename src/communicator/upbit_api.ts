@@ -8,13 +8,6 @@ interface UpbitAccount {
   unit_currency: string;
 }
 
-// Upbit Ticker 응답 인터페이스
-interface UpbitTicker {
-  market: string;
-  trade_price: number;
-  [key: string]: any;
-}
-
 /**
  * preload.js를 통해 Electron의 Main 프로세스에게 업비트 계좌 정보 조회를 요청합니다.
  * @param accessKey - 사용자가 입력한 Access Key

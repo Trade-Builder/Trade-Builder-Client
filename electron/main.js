@@ -26,7 +26,7 @@ import {
   sellAtCurrentPrice,
   limitBuyWithKRW,
   sellAll
-} from './upbit_api_manager.js';
+} from './upbit_api_manager_optimized.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
