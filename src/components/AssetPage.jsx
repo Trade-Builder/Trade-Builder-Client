@@ -21,8 +21,30 @@ const AssetPage = ({
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
-  const [apiValid, setApiValid] = useState(null); // null|true|false
   const [selectedLogicForApi, setSelectedLogicForApi] = useState(null);
+  const [apiValidityByLogic, setApiValidityByLogic] = useState({}); // { [logicId]: true|false|null }
+
+  const validateLogicApi = async (logicId) => {
+    if (!logicId) return;
+    try {
+      // @ts-ignore
+      if (!window.electronAPI) {
+        setApiValidityByLogic((m) => ({ ...m, [logicId]: null }));
+        return;
+      }
+      // @ts-ignore
+      const saved = await window.electronAPI.loadLogicApiKeys(logicId);
+      if (!saved?.accessKey || !saved?.secretKey) {
+        setApiValidityByLogic((m) => ({ ...m, [logicId]: false }));
+        return;
+      }
+      // @ts-ignore
+      await window.electronAPI.fetchUpbitAccounts(saved.accessKey, saved.secretKey);
+      setApiValidityByLogic((m) => ({ ...m, [logicId]: true }));
+    } catch {
+      setApiValidityByLogic((m) => ({ ...m, [logicId]: false }));
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -44,25 +66,6 @@ const AssetPage = ({
     })();
   }, []);
 
-  // API 키 유효성 검사 -> 상태 배지에 반영 (전역이 아닌, 실행중인 로직 파일의 키를 사용)
-  useEffect(() => {
-    const validate = async () => {
-      try {
-        // @ts-ignore
-        if (!window.electronAPI) { setApiValid(null); return; }
-        if (!runningLogic?.id) { setApiValid(null); return; }
-        // @ts-ignore
-        const saved = await window.electronAPI.loadLogicApiKeys(runningLogic.id);
-        if (!saved?.accessKey || !saved?.secretKey) { setApiValid(false); return; }
-        // @ts-ignore
-        await window.electronAPI.fetchUpbitAccounts(saved.accessKey, saved.secretKey);
-        setApiValid(true);
-      } catch {
-        setApiValid(false);
-      }
-    };
-    validate();
-  }, [showApiKeySettings, runningLogic]);
 
   // 드래그 앤 드롭 순서 변경 핸들러
   const handleDragEnd = (result) => {
@@ -74,6 +77,11 @@ const AssetPage = ({
       onReorderLogics(items);
     }
   };
+
+  // 드롭다운을 펼칠 때 해당 로직의 API 상태를 갱신
+  useEffect(() => {
+    if (openedMenuId) validateLogicApi(openedMenuId);
+  }, [openedMenuId]);
 
   // 새 로직 인라인 생성 시작
   const startCreateNewLogic = () => {
@@ -122,7 +130,12 @@ const AssetPage = ({
         <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
           <div className="relative">
             <button
-              onClick={() => { setSelectedLogicForApi(null); onCloseApiKeySettings && onCloseApiKeySettings(); }}
+              onClick={async () => {
+                const target = selectedLogicForApi;
+                onCloseApiKeySettings && onCloseApiKeySettings();
+                if (target) await validateLogicApi(target);
+                setSelectedLogicForApi(null);
+              }}
               className="absolute -top-2.5 -right-2.5 h-8 w-8 rounded-full bg-neutral-900 text-gray-100 border-2 border-neutral-700 flex items-center justify-center shadow hover:border-cyan-500/40 hover:text-white"
               aria-label="닫기"
               title="닫기"
@@ -149,51 +162,6 @@ const AssetPage = ({
         </div>
         <div className="text-sm sm:text-base text-gray-400">
           현재 수익률: <span className="font-semibold text-cyan-400">{roi.toFixed(2)}%</span>
-        </div>
-
-        {/* 오버레이 미니 카드 (Status) - 클릭 시 API 키 설정 열기 */}
-        <div
-          className="absolute right-4 top-4 sm:right-6 sm:top-6 backdrop-blur-md bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2 shadow-lg cursor-pointer select-none hover:border-cyan-500/40"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!runningLogic?.id) return; // 실행중인 로직이 없으면 열지 않음
-            setSelectedLogicForApi(runningLogic.id); // 실행중인 로직 설정 모달
-            if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              if (!runningLogic?.id) return;
-              setSelectedLogicForApi(runningLogic.id);
-              if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
-            }
-          }}
-          title="API 키 설정 열기"
-          aria-label="API 키 설정 열기"
-        >
-          <div className="text-[12px] uppercase tracking-wide text-gray-400">API SETUP ⚙</div>
-          <div className="flex items-end gap-2">
-            {apiValid === true && (
-              <>
-                <div className="text-lg font-semibold text-gray-100">Active</div>
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.6)]"></span>
-              </>
-            )}
-            {apiValid === false && (
-              <>
-                <div className="text-lg font-semibold text-gray-100">Inactive</div>
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-400 shadow-[0_0_12px_2px_rgba(248,113,113,0.6)]"></span>
-              </>
-            )}
-            {apiValid === null && (
-              <>
-                <div className="text-lg font-semibold text-gray-100">Unknown</div>
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-neutral-500"></span>
-              </>
-            )}
-          </div>
         </div>
       </div>
       {/* 추후 협업 때 추가할만한 내용: API 키가 valid 상태일때는 Active로, invalid 상태일때는 Inactive로 표시해주기 */}
@@ -313,15 +281,60 @@ const AssetPage = ({
                           >
                             수정하기
                           </button>
+                          {runningLogic?.id === logic.id ? (
+                            <button
+                              className="px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-500 border border-red-500/40"
+                              onClick={async () => {
+                                setOpenedMenuId(null);
+                                try {
+                                  // @ts-ignore
+                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
+                                    // @ts-ignore
+                                    await window.electronAPI.setRunningLogic(null);
+                                  }
+                                } catch {}
+                                setRunningLogic(null);
+                              }}
+                            >
+                              정지하기
+                            </button>
+                          ) : (
+                            <button
+                              className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
+                              onClick={async () => {
+                                setOpenedMenuId(null);
+                                const meta = { id: logic.id, name: logic.name };
+                                try {
+                                  // @ts-ignore
+                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
+                                    // @ts-ignore
+                                    await window.electronAPI.setRunningLogic(meta);
+                                  }
+                                } catch {}
+                                setRunningLogic(meta);
+                              }}
+                            >
+                              실행하기
+                            </button>
+                          )}
                           <button
-                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white"
+                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white flex items-center gap-2"
                             onClick={() => {
                               setOpenedMenuId(null);
                               setSelectedLogicForApi(logic.id);
                               if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
                             }}
                           >
-                            API 설정
+                            <span>API 설정</span>
+                            {(() => {
+                              const st = apiValidityByLogic[logic.id];
+                              const cls = st === true
+                                ? 'bg-cyan-400 shadow-[0_0_10px_2px_rgba(34,211,238,0.5)]'
+                                : st === false
+                                  ? 'bg-red-400 shadow-[0_0_10px_2px_rgba(248,113,113,0.5)]'
+                                  : 'bg-neutral-500';
+                              return <span className={`inline-flex h-2.5 w-2.5 rounded-full ${cls}`}></span>;
+                            })()}
                           </button>
                           <button
                             className="px-3 py-1 rounded text-sm text-red-400 bg-neutral-800 border border-neutral-700 hover:bg-red-500/10 hover:text-red-300"
