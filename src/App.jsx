@@ -20,8 +20,7 @@ const App = () => {
   // 비동기 목록 갱신의 경합을 방지하기 위한 시퀀스 카운터
   const listSeqRef = useRef(0);
 
-  // API 키 관련 상태
-  const [hasApiKeys, setHasApiKeys] = useState(false);
+  // API 키 설정 모달 상태
   const [showApiKeySettings, setShowApiKeySettings] = useState(false);
 
   // 테마 관련 상태
@@ -142,17 +141,24 @@ const App = () => {
   /**
    * API 키 저장 후 호출되는 핸들러
    * - 저장된 키로 자산 정보를 다시 불러옴
+   * @param {string} accessKey - 액세스 키
+   * @param {string} secretKey - 시크릿 키
+   * @param {string} logicId - 로직 ID (필수)
    */
-  const handleApiKeysSaved = async (accessKey, secretKey) => {
+  const handleApiKeysSaved = async (accessKey, secretKey, logicId) => {
+    if (!logicId) {
+      setAssetsError('로직이 선택되지 않았습니다. API 키는 특정 로직에만 저장할 수 있습니다.');
+      return;
+    }
+
     setAssetsLoading(true);
     setShowApiKeySettings(false);
 
     try {
-      const data = await getMyAssetsWithKeys(accessKey, secretKey);
+      const data = await getMyAssetsWithKeys(accessKey, secretKey, logicId);
       console.log("API 키 저장 후 자산 정보 조회 성공:", data);
       setAssets(data);
       setAssetsError(null);
-      setHasApiKeys(true);
     } catch (error) {
       console.error("자산 정보 조회 실패:", error);
       setAssetsError('자산 정보를 불러오는 데 실패했습니다. API 키가 정확한지 확인해주세요.');
@@ -164,9 +170,15 @@ const App = () => {
   /**
    * 자산 정보 새로고침 핸들러
    * - 저장된 API 키로 자산 정보를 다시 불러옴
-   * @param {string} logicId - 로직 ID (선택사항, 제공되면 해당 로직의 API 키 사용)
+   * @param {string} logicId - 로직 ID (필수)
    */
-  const handleRefreshAssets = async (logicId = null) => {
+  const handleRefreshAssets = async (logicId) => {
+    if (!logicId) {
+      setAssetsError('로직이 선택되지 않았습니다. 특정 로직의 자산 정보만 조회할 수 있습니다.');
+      setAssets([]); // 자산 정보 초기화
+      return;
+    }
+
     setAssetsLoading(true);
     setAssetsError(null);
 
@@ -176,24 +188,17 @@ const App = () => {
         throw new Error('Electron 환경에서만 사용 가능합니다.');
       }
 
-      let savedKeys = null;
-      // 로직 ID가 제공되면 해당 로직의 API 키 로드, 아니면 전역 API 키 로드
-      if (logicId) {
-        // @ts-ignore
-        savedKeys = await window.electronAPI.loadLogicApiKeys(logicId);
-      } else {
-        // @ts-ignore
-        savedKeys = await window.electronAPI.loadApiKeys();
-      }
+      // 해당 로직의 API 키 로드
+      // @ts-ignore
+      const savedKeys = await window.electronAPI.loadLogicApiKeys(logicId);
 
       if (!savedKeys || !savedKeys.accessKey || !savedKeys.secretKey) {
         setAssetsError('저장된 API 키가 없습니다. API 키를 먼저 설정해주세요.');
-        // setShowApiKeySettings(true); // 자동으로 열지 않음 - 버튼 클릭 시에만 열림
         return;
       }
 
       // 자산 정보 다시 불러오기
-      const data = await getMyAssetsWithKeys(savedKeys.accessKey, savedKeys.secretKey);
+      const data = await getMyAssetsWithKeys(savedKeys.accessKey, savedKeys.secretKey, logicId);
       console.log("자산 정보 새로고침 성공:", data);
       setAssets(data);
       setAssetsError(null);

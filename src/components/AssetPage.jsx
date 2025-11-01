@@ -109,8 +109,9 @@ const AssetPage = ({
         if (window.electronAPI && window.electronAPI.getRunningLogic) {
           // @ts-ignore
           const saved = await window.electronAPI.getRunningLogic();
-          if (saved) setRunningLogic(saved);
-          else {
+          if (saved) {
+            setRunningLogic(saved);
+          } else {
             // 최초 실행 시에는 실행 중인 로직이 없어야 하므로 null로 초기화
             // persisted 값도 명시적으로 비워 둔다
             // @ts-ignore
@@ -119,6 +120,9 @@ const AssetPage = ({
               await window.electronAPI.setRunningLogic(null);
             }
             setRunningLogic(null);
+            // 실행 중인 로직이 없을 때 자산 정보 초기화 및 오류 표시
+            setAssets([]);
+            setAssetsError('자산 정보를 조회할 로직을 먼저 선택해주세요.');
           }
         }
       } catch {}
@@ -350,7 +354,11 @@ const AssetPage = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onRefreshAssets();
+                if (!runningLogic?.id) {
+                  onRefreshAssets(); // logicId 없이 호출하여 에러 처리
+                  return;
+                }
+                onRefreshAssets(runningLogic.id);
               }}
               className="ml-2 text-xs px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:border-cyan-500/40 hover:text-cyan-400 transition"
               title="자산 정보 새로고침"
@@ -525,6 +533,9 @@ const AssetPage = ({
                                   }
                                 } catch {}
                                 setRunningLogic(null);
+                                // 전략 선택 해제 시 자산 정보 초기화 및 오류 표시
+                                setAssets([]);
+                                setAssetsError('자산 정보를 조회할 로직을 먼저 선택해주세요.');
                               }}
                             >
                               정지하기
