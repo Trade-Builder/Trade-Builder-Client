@@ -247,12 +247,12 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
     if (label === 'Buy') {
       if (key === 'orderType') lbl = '구매방식';
       if (key === 'limitPrice') lbl = '구매가격';
-      if (key === 'sellPercent') lbl = '구매비율';
+      if (key === 'sellPercent') lbl = '구매총액';
     }
     if (label === 'Sell') {
       if (key === 'orderType') lbl = '판매방식';
       if (key === 'limitPrice') lbl = '판매가격';
-      if (key === 'sellPercent') lbl = '판매비율';
+      if (key === 'sellPercent') lbl = '판매총액';
     }
     if (label === 'HighestPrice') {
       if (key === 'periodLength' && !lbl) lbl = '기간';
