@@ -276,19 +276,6 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 placeholder="로직 이름을 입력하세요"
                 className="text-2xl font-semibold tracking-tight bg-transparent text-gray-100 border-b border-transparent focus:border-cyan-400/60 outline-none placeholder:text-gray-500"
             />
-           <div className="flex justify-start mr-auto">
-                <select
-                  value={stock}
-                  onChange={(e)=>setStock(e.target.value)}
-                  className="ml-[80px] bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-                >
-                  <option value="">종목 선택</option>
-                  <option value="AAPL">AAPL</option>
-                  <option value="NVDA">NVDA</option>
-                  <option value="TSLA">TSLA</option>
-                  <option value="MSFT">MSFT</option>
-                </select>
-            </div>
                         <div className="flex gap-2 items-center">
                                 {/* Light/Dark 토글: 뒤로가기 버튼 왼쪽 */}
                                 <button
@@ -400,7 +387,26 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
             {/* 3. 정보 및 실행 패널 (오른쪽 사이드바) */}
             <div className="w-1/5 p-4 bg-neutral-900/60 rounded-2xl border border-neutral-800/70 flex flex-col">
-                <h3 className="text-lg font-semibold mb-2 text-gray-200">로그</h3>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-200">로그</h3>
+                    <div className="flex items-center gap-2">
+                        <select className="bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40">
+                            <option value="">거래소 선택</option>
+                            <option value="Upbit">Upbit</option>
+                        </select>
+                        <select
+                          value={stock}
+                          onChange={(e)=>setStock(e.target.value)}
+                          className="bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+                        >
+                          <option value="">Coin 선택</option>
+                          <option value="BitCoin">BitCoin</option>
+                          <option value="Etherium">Etherium</option>
+                          <option value="LiteCoin">LiteCoin</option>
+                          <option value="Dodge">Dodge</option>
+                        </select>
+                    </div>
+                </div>
                 <div ref={infoAreaRef} className="flex-grow p-2 bg-neutral-900 rounded border border-neutral-800 text-sm text-gray-300 overflow-auto" style={{ maxHeight: '60vh' }}>
                     {logs.map((l, idx) => (
                         <li
