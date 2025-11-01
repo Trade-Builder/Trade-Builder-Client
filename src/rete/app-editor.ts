@@ -275,7 +275,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     // Optional: add subtle dark grid background to the area
     try {
         addCustomBackground(area as any)
-    } catch {}
+    } catch { /* noop */ }
 
     // --- 더블클릭 확대 비활성화: 기본 d3/zoom 유사 동작 차단 ---
     // 캔버스 컨테이너에서 발생하는 dblclick을 막아 확대 트리거를 방지한다.
@@ -306,7 +306,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
 
     // -------------------- Node별 Select 적용 조합 --------------------
     // 직접 렌더 방식(CustomNode.tsx)로 대체되었으므로, 이 함수는 no-op 처리한다.
-    function applySelectEnhancements(_node: TradeNode) { /* no-op */ }
+    function applySelectEnhancements(..._args: any[]): void { void _args; /* no-op */ }
 
     // -------------------- 연결 타입 검사 --------------------
     const originalAddConnection = (editor as any).addConnection.bind(editor)
@@ -325,7 +325,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                         return con
                     }
                 }
-            } catch {}
+            } catch { /* noop */ }
             return originalAddConnection(con)
         }
 
@@ -378,25 +378,26 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         return null
     }
 
-    container.addEventListener('contextmenu', (e) => {
-        e.preventDefault()
-        const node = findNodeAt(e.clientX, e.clientY)
-        if (node) openMenu(e.clientX, e.clientY, node)
-        else closeMenu()
-    })
+    // 기존 우클릭 핸들러는 아래의 확장된 컨텍스트 메뉴 로직으로 대체됩니다.
     delBtn.addEventListener('click', async () => {
         if (currentNode) {
-            try {
-                const cons = editor
-                    .getConnections()
-                    .filter((c: any) => c.source === (currentNode as any).id || c.target === (currentNode as any).id)
-                for (const c of cons) {
-                    try {
-                        await (editor as any).removeConnection(c.id)
-                    } catch {}
-                }
-                await (editor as any).removeNode((currentNode as any).id)
-            } catch {}
+            // 선택된 노드 중 하나에서 삭제를 누르면 다중 삭제 수행
+            const isMulti = selectedNodeIds.size > 0 && selectedNodeIds.has((currentNode as any).id)
+            const targetIds: string[] = isMulti ? Array.from(selectedNodeIds) : [String((currentNode as any).id)]
+            for (const id of targetIds) {
+                try {
+                    const cons = editor
+                        .getConnections()
+                        .filter((c: any) => c.source === id || c.target === id)
+                    for (const c of cons) {
+                        try { await (editor as any).removeConnection(c.id) } catch { /* noop */ }
+                    }
+                    await (editor as any).removeNode(id)
+                } catch { /* noop */ }
+            }
+            // 삭제 후 선택 초기화 및 하이라이트 제거
+            selectedNodeIds.clear()
+            applySelectionOutline()
         }
         closeMenu()
     })
@@ -407,12 +408,290 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         if ((e as KeyboardEvent).key === 'Escape') closeMenu()
     })
 
+    // -------------------- 마퀴(드래그 사각형) 선택 & 복사/붙여넣기 --------------------
+    // 상태: 선택된 노드 집합 및 클립보드
+    const selectedNodeIds = new Set<string>()
+    let clipboard: SerializedGraph | null = null
+    let lastContextPosClient: { x: number; y: number } | null = null
+
+    // 선택 하이라이트 적용/해제 (DOM outline로 표시)
+    function applySelectionOutline() {
+        const nodes: any[] = editor.getNodes() as any
+        for (const n of nodes) {
+            const view: any = (area as any).nodeViews.get((n as any).id)
+            const el: HTMLElement | null = view && (view.element || view.el || view.root || null)
+            if (!el) continue
+            if (selectedNodeIds.has((n as any).id)) {
+                el.style.outline = '2px solid rgba(34,211,238,0.9)' // cyan-400
+                ;(el.style as any).outlineOffset = '0px'
+            } else {
+                el.style.outline = ''
+                ;(el.style as any).outlineOffset = ''
+            }
+        }
+    }
+
+    // 마퀴 사각형 엘리먼트
+    const marquee = document.createElement('div')
+    marquee.style.position = 'absolute'
+    marquee.style.pointerEvents = 'none'
+    marquee.style.zIndex = '40'
+    marquee.style.display = 'none'
+    marquee.style.border = '1px dashed #22d3ee' // cyan-400
+    marquee.style.background = 'rgba(34,211,238,0.18)'
+    marquee.style.borderRadius = '2px'
+    container.appendChild(marquee)
+
+    let isMarquee = false
+    let startX = 0, startY = 0
+
+    function updateMarqueeRect(x1: number, y1: number, x2: number, y2: number) {
+        const left = Math.min(x1, x2)
+        const top = Math.min(y1, y2)
+        const width = Math.abs(x2 - x1)
+        const height = Math.abs(y2 - y1)
+        marquee.style.left = left + 'px'
+        marquee.style.top = top + 'px'
+        marquee.style.width = width + 'px'
+        marquee.style.height = height + 'px'
+    }
+
+    // (helper 제거) rectContainsPoint: 현재 사용처 없음
+
+    // 마퀴 선택 시작: Shift + 좌클릭 드래그 (Pointer 이벤트로 캔버스 팬 완전 차단)
+    const onPointerDownCapture = (e: PointerEvent) => {
+        if (e.button !== 0) return
+
+        // 1) Shift 드래그: 마퀴 선택
+        if (e.shiftKey) {
+            // 캔버스 팬/줌 및 하위 핸들러 차단
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation()
+
+            isMarquee = true
+            const rect = container.getBoundingClientRect()
+            startX = e.clientX - rect.left
+            startY = e.clientY - rect.top
+            marquee.style.display = 'block'
+            updateMarqueeRect(startX, startY, startX, startY)
+            // 시작 시 기존 선택 초기화
+            selectedNodeIds.clear()
+            applySelectionOutline()
+
+            const onMove = (ev: PointerEvent) => {
+                if (!isMarquee) return
+                ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
+                const r = container.getBoundingClientRect()
+                const x = ev.clientX - r.left
+                const y = ev.clientY - r.top
+                updateMarqueeRect(startX, startY, x, y)
+
+                // 현재 사각형 내의 노드 중심점을 기준으로 선택
+                const selLeft = Math.min(startX, x) + r.left
+                const selTop = Math.min(startY, y) + r.top
+                const selRight = Math.max(startX, x) + r.left
+                const selBottom = Math.max(startY, y) + r.top
+                selectedNodeIds.clear()
+                for (const n of (editor.getNodes() as any[])) {
+                    const view: any = (area as any).nodeViews.get((n as any).id)
+                    const el: any = view && (view.element || view.el || view.root || null)
+                    if (!el || !el.getBoundingClientRect) continue
+                    const br: DOMRect = el.getBoundingClientRect()
+                    const cx = (br.left + br.right) / 2
+                    const cy = (br.top + br.bottom) / 2
+                    if (cx >= selLeft && cx <= selRight && cy >= selTop && cy <= selBottom) {
+                        selectedNodeIds.add((n as any).id)
+                    }
+                }
+                applySelectionOutline()
+            }
+            const onUp = (ev: PointerEvent) => {
+                if (!isMarquee) return
+                ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
+                isMarquee = false
+                marquee.style.display = 'none'
+                marquee.style.width = '0px'
+                marquee.style.height = '0px'
+                window.removeEventListener('pointermove', onMove, true)
+                window.removeEventListener('pointerup', onUp, true)
+            }
+            window.addEventListener('pointermove', onMove, true)
+            window.addEventListener('pointerup', onUp, true)
+            return
+        }
+
+        // 2) 선택된 노드 그룹 드래그
+        const node = findNodeAt(e.clientX, e.clientY)
+        const canGroupDrag = node && selectedNodeIds.has((node as any).id) && selectedNodeIds.size > 0
+        if (canGroupDrag) {
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation()
+
+            const startClient = { x: e.clientX, y: e.clientY }
+            const initialPos = new Map<string, { x: number; y: number }>()
+            const ids = Array.from(selectedNodeIds)
+            for (const id of ids) {
+                const view: any = (area as any).nodeViews.get(id)
+                const pos = (view && view.position) ? view.position : { x: 0, y: 0 }
+                initialPos.set(id, { x: pos.x, y: pos.y })
+            }
+
+            const onMove = (ev: PointerEvent) => {
+                ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
+                const k = (area && area.area && area.area.transform && area.area.transform.k) ? area.area.transform.k : 1
+                const dx = (ev.clientX - startClient.x) / k
+                const dy = (ev.clientY - startClient.y) / k
+                for (const id of ids) {
+                    const view: any = (area as any).nodeViews.get(id)
+                    const init = initialPos.get(id)
+                    if (!view || !init) continue
+                    const nx = init.x + dx
+                    const ny = init.y + dy
+                    try { view.translate(nx, ny) } catch { /* noop */ }
+                }
+            }
+            const onUp = (ev: PointerEvent) => {
+                ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
+                window.removeEventListener('pointermove', onMove, true)
+                window.removeEventListener('pointerup', onUp, true)
+            }
+            window.addEventListener('pointermove', onMove, true)
+            window.addEventListener('pointerup', onUp, true)
+            return
+        }
+        // 그 외 기본 동작(단일 노드 드래그/캔버스 동작)은 통과
+    }
+    container.addEventListener('pointerdown', onPointerDownCapture, { capture: true })
+    // 마퀴 중일 때 캔버스에 전달되는 포인터 이동도 차단
+    const onContainerPointerMove = (e: PointerEvent) => {
+        if (!isMarquee) return
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+    }
+    container.addEventListener('pointermove', onContainerPointerMove, { capture: true })
+
+    // 컨텍스트 메뉴 확장: 선택 존재 시 복사, 빈 공간에서 붙여넣기
+    const copyBtn = document.createElement('button')
+    copyBtn.textContent = '복사'
+    copyBtn.style.width = '100%'
+    copyBtn.style.padding = '6px 10px'
+    copyBtn.style.color = '#111827'
+    copyBtn.style.background = '#e0f2fe' // light cyan
+    copyBtn.style.borderRadius = '6px'
+    ;(copyBtn.style as any).border = 'none'
+    copyBtn.style.cursor = 'pointer'
+
+    const pasteBtn = document.createElement('button')
+    pasteBtn.textContent = '붙여넣기'
+    pasteBtn.style.width = '100%'
+    pasteBtn.style.padding = '6px 10px'
+    pasteBtn.style.color = '#111827'
+    pasteBtn.style.background = '#d1fae5' // light green-ish
+    pasteBtn.style.borderRadius = '6px'
+    ;(pasteBtn.style as any).border = 'none'
+    pasteBtn.style.cursor = 'pointer'
+
+    // 기존 메뉴에 동적으로 버튼 구성
+    function rebuildMenuButtons({ allowDelete, allowCopy, allowPaste }: { allowDelete: boolean; allowCopy: boolean; allowPaste: boolean }) {
+        // 초기화
+        while (menu.firstChild) menu.removeChild(menu.firstChild)
+        if (allowDelete) menu.appendChild(delBtn)
+        if (allowCopy) menu.appendChild(copyBtn)
+        if (allowPaste) menu.appendChild(pasteBtn)
+    }
+
+    // 복사 동작: 선택된 노드와 그 사이의 연결만 직렬화하여 내부 클립보드에 저장
+    async function handleCopy() {
+        if (!selectedNodeIds.size) return
+        const full = exportGraph(editor, area)
+        const idSet = new Set(Array.from(selectedNodeIds))
+        const nodes = (full.nodes || []).filter(n => idSet.has(n.id))
+        const connections = (full.connections || []).filter(c => idSet.has(c.source) && idSet.has(c.target))
+        clipboard = { nodes, connections, viewport: undefined }
+        closeMenu()
+    }
+
+    // 붙여넣기: 빈 공간을 기준으로 상대 위치를 유지하여 노드 생성 후 연결 복원
+    async function handlePaste(clientX: number, clientY: number) {
+        if (!clipboard || !clipboard.nodes?.length) return
+        const world = clientToWorld(area, container, clientX, clientY)
+        const minX = Math.min(...clipboard.nodes.map(n => n.position?.x ?? 0))
+        const minY = Math.min(...clipboard.nodes.map(n => n.position?.y ?? 0))
+        const map = new Map<string, TradeNode>()
+        // 1) 노드 생성
+        for (const n of clipboard.nodes) {
+            try {
+                const kind = n.kind || labelToKind(n.label) || 'const'
+                const node = createNodeByKind(kind as NodeKind)
+                // 컨트롤 값 복원
+                if (n.controls) {
+                    for (const key of Object.keys(n.controls)) {
+                        const ctrl = (node.controls as any)[key]
+                        const val = (n.controls as any)[key]
+                        if (ctrl && typeof ctrl.setValue === 'function') ctrl.setValue(val)
+                        else if (ctrl && 'value' in ctrl) ctrl.value = val
+                    }
+                }
+                await editor.addNode(node)
+                map.set(n.id, node)
+                const targetX = world.x + ((n.position?.x ?? 0) - minX)
+                const targetY = world.y + ((n.position?.y ?? 0) - minY)
+                await (area as any).nodeViews.get((node as any).id)?.translate(targetX, targetY)
+            } catch { /* noop */ }
+        }
+        // 2) 연결 생성
+        for (const c of (clipboard.connections || [])) {
+            const source = map.get(c.source)
+            const target = map.get(c.target)
+            if (source && target) {
+                try {
+                    await editor.addConnection(new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput))
+                } catch { /* noop */ }
+            }
+        }
+        closeMenu()
+        // 붙여넣기 후 선택 초기화
+        selectedNodeIds.clear()
+        applySelectionOutline()
+    }
+
+    copyBtn.addEventListener('click', () => { handleCopy() })
+    pasteBtn.addEventListener('click', () => {
+        const pos = lastContextPosClient
+        if (pos) handlePaste(pos.x, pos.y)
+    })
+
+    // 컨텍스트 메뉴 동작 수정: 선택/클립보드 상태에 따라 버튼 구성
+    container.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        lastContextPosClient = { x: e.clientX, y: e.clientY }
+        const node = findNodeAt(e.clientX, e.clientY)
+        const hasSelection = selectedNodeIds.size > 0
+        const hasClipboard = !!(clipboard && clipboard.nodes && clipboard.nodes.length)
+        if (node) {
+            // 노드 위: 삭제 + (선택 존재 시) 복사
+            rebuildMenuButtons({ allowDelete: true, allowCopy: hasSelection, allowPaste: false })
+            openMenu(e.clientX, e.clientY, node)
+        } else {
+            // 빈 공간: 붙여넣기만 (클립보드 존재 시)
+            if (hasClipboard) {
+                rebuildMenuButtons({ allowDelete: false, allowCopy: false, allowPaste: true })
+                openMenu(e.clientX, e.clientY, null as any)
+            } else {
+                closeMenu()
+            }
+        }
+    })
+
     return {
         editor,
         area,
         destroy: () => {
+            // cleanup
+            container.removeEventListener('pointerdown', onPointerDownCapture, { capture: true } as any)
+            container.removeEventListener('pointermove', onContainerPointerMove, { capture: true } as any)
             closeMenu()
             menu.remove()
+            marquee.remove()
                 ; (area as any).destroy()
         }
     }
@@ -474,9 +753,7 @@ export function clientToWorld(
             const wx = area.area.pointer.x
             const wy = area.area.pointer.y
             return { x: wx, y: wy }
-        } catch (_) {
-            // fallback below
-        }
+        } catch { /* fallback below */ }
     }
     const rect = container.getBoundingClientRect()
     const sx = clientX - rect.left
@@ -573,7 +850,7 @@ export function exportGraph(editor: any, area: any): SerializedGraph {
             const { k, x, y } = area.area.transform
             viewport = { k, x, y }
         }
-    } catch {}
+    } catch { /* noop */ }
 
     return { nodes, connections, viewport }
 }
@@ -595,7 +872,7 @@ export async function importGraph(editor: any, area: any, graph: SerializedGraph
         let node: TradeNode
         try {
             node = createNodeByKind(kind as NodeKind)
-        } catch (e) {
+        } catch {
             node = new BuyNode() as TradeNode
         }
 
@@ -633,14 +910,14 @@ export async function importGraph(editor: any, area: any, graph: SerializedGraph
             if (typeof x === 'number') area.area.transform.x = x
             if (typeof y === 'number') area.area.transform.y = y
             if (typeof area.area.update === 'function') area.area.update()
-        } catch {}
+        } catch { /* noop */ }
     }
 
     if (typeof (editor as any).reteUiEnhance === 'function') {
         requestAnimationFrame(() => {
             try {
                 ; (editor as any).reteUiEnhance()
-            } catch {}
+            } catch { /* noop */ }
         })
     }
 }
@@ -651,10 +928,10 @@ export async function removeNodeWithConnections(editor: any, nodeId: string): Pr
     for (const c of cons) {
         try {
             await (editor as any).removeConnection(c.id)
-        } catch {}
+        } catch { /* noop */ }
     }
     try {
         await (editor as any).removeNode(nodeId)
-    } catch {}
+    } catch { /* noop */ }
 }
 
