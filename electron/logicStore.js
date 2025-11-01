@@ -87,6 +87,7 @@ export async function saveLogic(logic) {
   const toSave = {
     id: logic.id,
     name: logic.name || 'Untitled',
+    exchange: logic.exchange,
     stock: logic.stock,
     data: logic.data || {},
     apiKeys: logic.apiKeys || prev.apiKeys || undefined,

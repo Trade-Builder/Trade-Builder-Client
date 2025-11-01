@@ -11,6 +11,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const toast = useToast();
     const [logic, setLogic] = useState(null);
     const [logicName, setLogicName] = useState('');
+    const [exchange, setExchange] = useState('Upbit');
     const [stock, setStock] = useState('');
     const buyCanvasRef = useRef(null);
     const sellCanvasRef = useRef(null);
@@ -97,6 +98,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                         if (current) {
                             setLogic(current);
                             setLogicName(current.name || '');
+                            setExchange(current.exchange || 'Upbit');
                             setStock(current.stock || '');
                             return;
                         }
@@ -106,6 +108,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             } else {
                 setLogic(null);
                 setLogicName(defaultNewLogicName || '');
+                setExchange('Upbit');
                 setStock('');
             }
         })();
@@ -222,6 +225,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const payload = {
                 id: selectedLogicId || `logic-${Date.now()}`,
                 name: logicName,
+                exchange: exchange || undefined,
                 stock: stock || undefined,
                 data: updatedLogicData,
             };
@@ -390,9 +394,13 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-200">로그</h3>
                     <div className="flex items-center gap-2">
-                        <select className="bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40">
+                                                <select
+                                                    value={exchange}
+                                                    onChange={(e)=>setExchange(e.target.value)}
+                                                    className="bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+                                                >
                             <option value="">거래소 선택</option>
-                            <option value="Upbit">Upbit</option>
+                                                        <option value="Upbit">Upbit</option>
                         </select>
                         <select
                           value={stock}

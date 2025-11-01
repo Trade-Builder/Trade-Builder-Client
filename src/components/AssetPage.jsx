@@ -272,15 +272,7 @@ const AssetPage = ({
                           >
                             실행하기 // 실행기능 임시로 뺌 
                           </button> */} 
-                          <button
-                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white"
-                            onClick={() => {
-                              setOpenedMenuId(null);
-                              onLogicClick(logic.id);
-                            }}
-                          >
-                            수정하기
-                          </button>
+                          {/* 실행/정지 토글 */}
                           {runningLogic?.id === logic.id ? (
                             <button
                               className="px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-500 border border-red-500/40"
@@ -335,6 +327,16 @@ const AssetPage = ({
                                   : 'bg-neutral-500';
                               return <span className={`inline-flex h-2.5 w-2.5 rounded-full ${cls}`}></span>;
                             })()}
+                          </button>
+                          {/* 수정하기 버튼을 삭제하기 왼쪽으로 이동 */}
+                          <button
+                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white"
+                            onClick={() => {
+                              setOpenedMenuId(null);
+                              onLogicClick(logic.id);
+                            }}
+                          >
+                            수정하기
                           </button>
                           <button
                             className="px-3 py-1 rounded text-sm text-red-400 bg-neutral-800 border border-neutral-700 hover:bg-red-500/10 hover:text-red-300"
