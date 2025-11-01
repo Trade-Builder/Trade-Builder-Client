@@ -14,7 +14,17 @@ import {
   fetch1mCandles,
   fetchAndFormat1mCandles,
   fetchCandles,
-  fetchAndFormatCandles
+  fetchAndFormatCandles,
+  placeOrder,
+  marketBuy,
+  marketSell,
+  limitBuy,
+  limitSell,
+  getCurrentPrice,
+  buyAtCurrentPrice,
+  sellAtCurrentPrice,
+  limitBuyWithKRW,
+  sellAll
 } from './candleDataManager.js';
 
 // __dirname 대체 (ESM 환경)
@@ -161,4 +171,54 @@ ipcMain.handle('candle:getLatest', (event, interval = 1) => {
 // IPC: 특정 범위의 데이터 가져오기
 ipcMain.handle('candle:getRange', (event, interval, start, end) => {
   return getCandleRange(interval, start, end);
+});
+
+// IPC: 통합 주문
+ipcMain.handle('upbit:placeOrder', async (event, accessKey, secretKey, options) => {
+  return await placeOrder(accessKey, secretKey, options);
+});
+
+// IPC: 시장가 매수
+ipcMain.handle('upbit:marketBuy', async (event, accessKey, secretKey, market, price) => {
+  return await marketBuy(accessKey, secretKey, market, price);
+});
+
+// IPC: 시장가 매도
+ipcMain.handle('upbit:marketSell', async (event, accessKey, secretKey, market, volume) => {
+  return await marketSell(accessKey, secretKey, market, volume);
+});
+
+// IPC: 지정가 매수
+ipcMain.handle('upbit:limitBuy', async (event, accessKey, secretKey, market, price, volume) => {
+  return await limitBuy(accessKey, secretKey, market, price, volume);
+});
+
+// IPC: 지정가 매도
+ipcMain.handle('upbit:limitSell', async (event, accessKey, secretKey, market, price, volume) => {
+  return await limitSell(accessKey, secretKey, market, price, volume);
+});
+
+// IPC: 현재가 조회
+ipcMain.handle('upbit:getCurrentPrice', async (event, market) => {
+  return await getCurrentPrice(market);
+});
+
+// IPC: 현재가로 지정가 매수
+ipcMain.handle('upbit:buyAtCurrentPrice', async (event, accessKey, secretKey, market, volume) => {
+  return await buyAtCurrentPrice(accessKey, secretKey, market, volume);
+});
+
+// IPC: 현재가로 지정가 매도
+ipcMain.handle('upbit:sellAtCurrentPrice', async (event, accessKey, secretKey, market, volume) => {
+  return await sellAtCurrentPrice(accessKey, secretKey, market, volume);
+});
+
+// IPC: KRW 금액으로 지정가 매수
+ipcMain.handle('upbit:limitBuyWithKRW', async (event, accessKey, secretKey, market, price, krwAmount) => {
+  return await limitBuyWithKRW(accessKey, secretKey, market, price, krwAmount);
+});
+
+// IPC: 보유 수량 전체 매도
+ipcMain.handle('upbit:sellAll', async (event, accessKey, secretKey, market, orderType, limitPrice) => {
+  return await sellAll(accessKey, secretKey, market, orderType, limitPrice);
 });

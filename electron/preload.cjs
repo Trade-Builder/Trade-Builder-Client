@@ -118,4 +118,114 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @returns {Promise<{timestamps: number[], closingPrices: number[], volumes: number[], count: number, interval: number}>}
    */
   getCandleRange: (interval, start, end) => ipcRenderer.invoke('candle:getRange', interval, start, end),
+
+  /**
+   * 업비트 통합 주문
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {object} options - 주문 옵션 {market, side, orderType, price, volume}
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  placeOrder: (accessKey, secretKey, options) =>
+    ipcRenderer.invoke('upbit:placeOrder', accessKey, secretKey, options),
+
+  /**
+   * 업비트 시장가 매수
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} price - 주문 금액 (KRW)
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  marketBuy: (accessKey, secretKey, market, price) =>
+    ipcRenderer.invoke('upbit:marketBuy', accessKey, secretKey, market, price),
+
+  /**
+   * 업비트 시장가 매도
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} volume - 매도할 코인 수량
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  marketSell: (accessKey, secretKey, market, volume) =>
+    ipcRenderer.invoke('upbit:marketSell', accessKey, secretKey, market, volume),
+
+  /**
+   * 업비트 지정가 매수
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} price - 1개당 가격
+   * @param {number} volume - 매수 수량
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  limitBuy: (accessKey, secretKey, market, price, volume) =>
+    ipcRenderer.invoke('upbit:limitBuy', accessKey, secretKey, market, price, volume),
+
+  /**
+   * 업비트 지정가 매도
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} price - 1개당 가격
+   * @param {number} volume - 매도 수량
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  limitSell: (accessKey, secretKey, market, price, volume) =>
+    ipcRenderer.invoke('upbit:limitSell', accessKey, secretKey, market, price, volume),
+
+  /**
+   * 현재가 조회
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @returns {Promise<{success: boolean, price?: number, data?: any, error?: any}>}
+   */
+  getCurrentPrice: (market) =>
+    ipcRenderer.invoke('upbit:getCurrentPrice', market),
+
+  /**
+   * 현재가로 지정가 매수
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} volume - 매수 수량
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  buyAtCurrentPrice: (accessKey, secretKey, market, volume) =>
+    ipcRenderer.invoke('upbit:buyAtCurrentPrice', accessKey, secretKey, market, volume),
+
+  /**
+   * 현재가로 지정가 매도
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} volume - 매도 수량
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  sellAtCurrentPrice: (accessKey, secretKey, market, volume) =>
+    ipcRenderer.invoke('upbit:sellAtCurrentPrice', accessKey, secretKey, market, volume),
+
+  /**
+   * KRW 금액으로 지정가 매수
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} price - 1개당 가격
+   * @param {number} krwAmount - 사용할 KRW 금액
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  limitBuyWithKRW: (accessKey, secretKey, market, price, krwAmount) =>
+    ipcRenderer.invoke('upbit:limitBuyWithKRW', accessKey, secretKey, market, price, krwAmount),
+
+  /**
+   * 보유 수량 전체 매도
+   * @param {string} accessKey - Access Key
+   * @param {string} secretKey - Secret Key
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {string} orderType - 'market' 또는 'limit'
+   * @param {number} [limitPrice] - 지정가인 경우 가격
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
+  sellAll: (accessKey, secretKey, market, orderType = 'market', limitPrice = null) =>
+    ipcRenderer.invoke('upbit:sellAll', accessKey, secretKey, market, orderType, limitPrice),
 });
