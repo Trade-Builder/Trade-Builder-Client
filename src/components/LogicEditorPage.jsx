@@ -315,7 +315,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                             { label: 'RSI(투자지표)', kind: 'rsi' },
                             { label: 'ROI(수익률)', kind: 'roi' },
                             { label: 'SMA(단순 이동 평균)', kind: 'sma' },
-                            { label: 'RL(강화학습 신호)', kind: 'rl' }
+                            { label: 'AI 노드(AI 강화학습)', kind: 'rl' }
                         ]
                     },
                     
