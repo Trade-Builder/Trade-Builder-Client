@@ -24,6 +24,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
     const { editorRef: sellEditorRef, areaRef: sellAreaRef, ready: sellReady } = useReteAppEditor(sellCanvasRef);
+    const [expanded, setExpanded] = useState(null); // 'buy' | 'sell' | null
 
     const appendLog = useCallback((title, msg) => {
         let date = new Date();
@@ -70,6 +71,23 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     useEffect(() => {
         logRunDetailsRef.current = logRunDetails;
     }, [logRunDetails]);
+
+    // BuyGraph 확장/축소 시 Rete 영역 갱신(컨테이너 크기 변화 반영)
+    useEffect(() => {
+        try {
+            if (expanded === 'buy') {
+                const a = buyAreaRef.current;
+                if (a && a.area && typeof a.area.update === 'function') a.area.update();
+            } else if (expanded === 'sell') {
+                const a = sellAreaRef.current;
+                if (a && a.area && typeof a.area.update === 'function') a.area.update();
+            } else {
+                const ba = buyAreaRef.current; const sa = sellAreaRef.current;
+                if (ba && ba.area && typeof ba.area.update === 'function') ba.area.update();
+                if (sa && sa.area && typeof sa.area.update === 'function') sa.area.update();
+            }
+        } catch {}
+    }, [expanded, buyAreaRef, sellAreaRef]);
 
     const toggleTheme = useCallback(() => {
         setTheme((t) => {
@@ -367,12 +385,23 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                             ref={buyCanvasRef}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => handleDropOn(e, 'buy')}
-                            className="flex-1 relative overflow-hidden border-b border-neutral-800 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.03),_transparent_60%)]"
+                            className={[
+                                expanded === 'sell' ? 'flex-none h-0 pointer-events-none opacity-0' : (expanded === 'buy' ? 'flex-none' : 'flex-1'),
+                                'relative overflow-hidden',
+                                expanded === 'buy' || expanded === 'sell' ? '' : 'border-b border-neutral-800',
+                                'bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.03),_transparent_60%)]'
+                            ].join(' ')}
+                            style={expanded === 'buy' ? { height: 'calc(100% - 0px)' } : undefined}
                             title="여기로 드래그하여 노드를 추가"
                         >
-                            <span className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm pointer-events-none select-none">
+                            <button
+                                type="button"
+                                onClick={() => setExpanded(prev => prev === 'buy' ? null : 'buy')}
+                                className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm select-none hover:bg-neutral-700"
+                                title={expanded === 'buy' ? '축소하기' : '확장하기'}
+                            >
                                 BuyGraph
-                            </span>
+                            </button>
                         </div>
 
                         {/* 하단 영역 (Rete.js 캔버스) */}
@@ -380,12 +409,22 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                             ref={sellCanvasRef}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => handleDropOn(e, 'sell')}
-                            className="flex-1 relative overflow-hidden bg-[radial-gradient(ellipse_at_bottom,_rgba(255,255,255,0.03),_transparent_60%)]"
+                            className={[
+                                expanded === 'buy' ? 'flex-none h-0 pointer-events-none opacity-0' : (expanded === 'sell' ? 'flex-none' : 'flex-1'),
+                                'relative overflow-hidden',
+                                'bg-[radial-gradient(ellipse_at_bottom,_rgba(255,255,255,0.03),_transparent_60%)]'
+                            ].join(' ')}
+                            style={expanded === 'sell' ? { height: 'calc(100% - 0px)' } : undefined}
                             title="여기로 드래그하여 노드를 추가"
                         >
-                            <span className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm pointer-events-none select-none">
+                            <button
+                                type="button"
+                                onClick={() => setExpanded(prev => prev === 'sell' ? null : 'sell')}
+                                className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm select-none hover:bg-neutral-700"
+                                title={expanded === 'sell' ? '축소하기' : '확장하기'}
+                            >
                                 SellGraph
-                            </span>
+                            </button>
                         </div>
                     </div>
 
