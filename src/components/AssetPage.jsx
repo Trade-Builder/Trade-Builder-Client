@@ -7,14 +7,10 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 // ----------------------------------------------------------------
 const AssetPage = ({
   logics,
-  assets,
-  assetsLoading,
-  assetsError,
   onLogicClick,
-  onAddNewLogic,
   onDeleteLogic,
   onReorderLogics,
-  onRefreshAssets,
+  onCreateLogic,
   onOpenApiKeySettings,
   showApiKeySettings,
   onCloseApiKeySettings,
@@ -28,15 +24,23 @@ const AssetPage = ({
   const [apiValid, setApiValid] = useState(null); // null|true|false
 
   useEffect(() => {
-    if (!localStorage.getItem('runningLogic')) {
-      const mockRunningLogic = { id: 'logic-1', name: 'Upbit 단타 거래 로직' };
-      localStorage.setItem('runningLogic', JSON.stringify(mockRunningLogic));
-    }
-    const savedRunningLogic = localStorage.getItem('runningLogic');
-    if (savedRunningLogic) {
-      setRunningLogic(JSON.parse(savedRunningLogic));
-    }
-    setRoi(7.25);
+    (async () => {
+      try {
+        // @ts-ignore
+        if (window.electronAPI && window.electronAPI.getRunningLogic) {
+          // @ts-ignore
+          const saved = await window.electronAPI.getRunningLogic();
+          if (saved) setRunningLogic(saved);
+          else {
+            const mockRunningLogic = { id: 'logic-1', name: 'Upbit 단타 거래 로직' };
+            // @ts-ignore
+            if (window.electronAPI.setRunningLogic) await window.electronAPI.setRunningLogic(mockRunningLogic);
+            setRunningLogic(mockRunningLogic);
+          }
+        }
+      } catch {}
+      setRoi(7.25);
+    })();
   }, []);
 
   // API 키 유효성 검사 -> 상태 배지에 반영
@@ -66,7 +70,6 @@ const AssetPage = ({
     items.splice(result.destination.index, 0, reorderedItem);
     if (onReorderLogics) {
       onReorderLogics(items);
-      localStorage.setItem('userLogics', JSON.stringify(items));
     }
   };
 
@@ -90,10 +93,13 @@ const AssetPage = ({
       cancelCreateNewLogic();
       return;
     }
-    const newId = `logic-${Date.now()}`;
-    const updated = logics.map((l) => (l.id === editingId ? { id: newId, name, data: {} } : l));
+    // 생성은 상위(App)로 위임하여 파일 생성/인덱스 갱신
+    if (typeof onCreateLogic === 'function') {
+      onCreateLogic(name);
+    }
+    // 로컬 UI에서 임시 항목 제거하여 즉시 반영
+    const updated = logics.filter((l) => l.id !== editingId);
     onReorderLogics && onReorderLogics(updated);
-    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };
@@ -103,7 +109,6 @@ const AssetPage = ({
     if (!editingId) return;
     const updated = logics.filter((l) => l.id !== editingId);
     onReorderLogics && onReorderLogics(updated);
-    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };

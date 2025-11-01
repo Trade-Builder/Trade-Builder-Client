@@ -220,11 +220,11 @@ class Interpreter {
         this.log("Sell", msg);
     }
 
-    private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
-        const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
-        const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
-        return [targetLogic.stock, targetLogic.data];
-    }
+    // private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
+    //     const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
+    //     const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
+    //     return [targetLogic.stock, targetLogic.data];
+    // }
 }
 
 class OrderData {

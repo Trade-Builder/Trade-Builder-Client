@@ -73,7 +73,7 @@ export class ROINode extends TradeNode {
 // RL 신호 공급 노드 (간단한 값 출력)
 export class RLNode extends TradeNode {
     constructor() {
-        super('RL')
+        super('AI 노드')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '신호'))
         // 추후: 모델/마켓 등 설정 추가 가능
         this.addControl('model', new ClassicPreset.InputControl('text', { initial: 'default' as any }))

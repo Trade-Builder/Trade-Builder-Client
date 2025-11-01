@@ -34,22 +34,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   stopRL: () => ipcRenderer.invoke('RL:stop'),
 
-  // 로직 배열 파일 저장/로드
+  // 로직 파일 저장/로드 (분리 구조)
   /**
-   * 모든 로직 불러오기
-   * @returns {Promise<Array>} 로직 배열
+   * 로직 요약 목록(인덱스) 조회 [{id,name,stock,order}]
    */
-  loadAllLogics: () => ipcRenderer.invoke('logics:loadAll'),
+  listLogics: () => ipcRenderer.invoke('logics:list'),
   /**
-   * 모든 로직 저장 (덮어쓰기)
-   * @param {Array} logics
-   * @returns {Promise<boolean>}
+   * 새 로직 생성
    */
-  saveAllLogics: (logics) => ipcRenderer.invoke('logics:saveAll', logics),
+  createLogic: (name) => ipcRenderer.invoke('logics:create', name),
   /**
-   * 특정 로직 삭제 후 저장
-   * @param {string} id
-   * @returns {Promise<boolean>}
+   * 특정 로직 로드
    */
-  deleteLogicById: (id) => ipcRenderer.invoke('logics:deleteById', id),
+  loadLogic: (id) => ipcRenderer.invoke('logics:load', id),
+  /**
+   * 특정 로직 저장
+   */
+  saveLogic: (logic) => ipcRenderer.invoke('logics:save', logic),
+  /**
+   * 특정 로직 삭제
+   */
+  deleteLogic: (id) => ipcRenderer.invoke('logics:delete', id),
+  /**
+   * 로직 순서 재배치
+   */
+  reorderLogics: (ids) => ipcRenderer.invoke('logics:reorder', ids),
+
+  // 환경설정/앱 상태 (Electron Store)
+  getTheme: () => ipcRenderer.invoke('prefs:getTheme'),
+  setTheme: (theme) => ipcRenderer.invoke('prefs:setTheme', theme),
+  getRunningLogic: () => ipcRenderer.invoke('app:getRunningLogic'),
+  setRunningLogic: (meta) => ipcRenderer.invoke('app:setRunningLogic', meta),
 });

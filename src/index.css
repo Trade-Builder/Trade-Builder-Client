@@ -177,3 +177,16 @@ html, body {
 }
 
 /* Buttons or focus rings using cyan accents should respect --accent; some utilities will pick it via inline styles already. */
+
+/* Toast animations */
+@keyframes toastIn {
+    0% { transform: translateY(12px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes toastOut {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-6px); opacity: 0; }
+}
+.toast-slide-in {
+    animation: toastIn 180ms ease-out;
+}

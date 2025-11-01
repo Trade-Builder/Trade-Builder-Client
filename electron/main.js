@@ -7,6 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import Store from 'electron-store';
 import { launchRLProcess, stopRLProcess } from './RLlauncher.js';
+import {
+  listLogics as ls_listLogics,
+  createLogic as ls_createLogic,
+  loadLogic as ls_loadLogic,
+  saveLogic as ls_saveLogic,
+  deleteLogic as ls_deleteLogic,
+  reorderLogics as ls_reorderLogics,
+} from './logicStore.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -122,47 +130,58 @@ ipcMain.handle('RL:stop', () => {
   stopRLProcess();
 });
 
-// ---------------- Logic persistence (single JSON file) ----------------
-const logicFilePath = () => path.join(app.getPath('userData'), 'logics.json');
-
-ipcMain.handle('logics:loadAll', async () => {
+// ---------------- Preferences / App state via electron-store ----------------
+ipcMain.handle('prefs:getTheme', async () => {
   try {
-    const file = logicFilePath();
-    if (!fs.existsSync(file)) return [];
-    const raw = fs.readFileSync(file, 'utf-8');
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) return arr;
-    return [];
-  } catch (e) {
-    console.error('logics:loadAll failed', e);
-    return [];
+    return store.get('ui.theme') || 'dark';
+  } catch {
+    return 'dark';
   }
 });
 
-ipcMain.handle('logics:saveAll', async (event, logics) => {
+ipcMain.handle('prefs:setTheme', async (event, theme) => {
   try {
-    const file = logicFilePath();
-    const dir = path.dirname(file);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(logics ?? [], null, 2), 'utf-8');
+    store.set('ui.theme', theme === 'light' ? 'light' : 'dark');
     return true;
-  } catch (e) {
-    console.error('logics:saveAll failed', e);
-    throw e;
-  }
+  } catch (e) { console.error('prefs:setTheme failed', e); throw e; }
 });
 
-ipcMain.handle('logics:deleteById', async (event, id) => {
+ipcMain.handle('app:getRunningLogic', async () => {
   try {
-    const file = logicFilePath();
-    if (!fs.existsSync(file)) return true;
-    const raw = fs.readFileSync(file, 'utf-8');
-    const arr = JSON.parse(raw);
-    const next = Array.isArray(arr) ? arr.filter((l) => l?.id !== id) : [];
-    fs.writeFileSync(file, JSON.stringify(next, null, 2), 'utf-8');
+    return store.get('app.runningLogic') || null;
+  } catch { return null; }
+});
+
+ipcMain.handle('app:setRunningLogic', async (event, logicMeta) => {
+  try {
+    // logicMeta: {id,name}
+    store.set('app.runningLogic', logicMeta || null);
     return true;
-  } catch (e) {
-    console.error('logics:deleteById failed', e);
-    throw e;
-  }
+  } catch (e) { console.error('app:setRunningLogic failed', e); throw e; }
+});
+
+// ---------------- Logic persistence (modularized, async, per-logic files) ----------------
+// 인덱스(요약 목록) 조회
+ipcMain.handle('logics:list', async () => {
+  try { return await ls_listLogics(); } catch (e) { console.error('logics:list failed', e); return []; }
+});
+// 새 로직 생성 (파일 생성 + 인덱스 갱신)
+ipcMain.handle('logics:create', async (event, name) => {
+  try { return await ls_createLogic(name); } catch (e) { console.error('logics:create failed', e); throw e; }
+});
+// 특정 로직 본문 로드
+ipcMain.handle('logics:load', async (event, id) => {
+  try { return await ls_loadLogic(id); } catch (e) { console.error('logics:load failed', e); throw e; }
+});
+// 특정 로직 저장
+ipcMain.handle('logics:save', async (event, logic) => {
+  try { return await ls_saveLogic(logic); } catch (e) { console.error('logics:save failed', e); throw e; }
+});
+// 삭제
+ipcMain.handle('logics:delete', async (event, id) => {
+  try { return await ls_deleteLogic(id); } catch (e) { console.error('logics:delete failed', e); throw e; }
+});
+// 순서 재배치
+ipcMain.handle('logics:reorder', async (event, ids) => {
+  try { return await ls_reorderLogics(ids); } catch (e) { console.error('logics:reorder failed', e); throw e; }
 });

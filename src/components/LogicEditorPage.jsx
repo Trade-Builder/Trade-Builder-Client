@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useToast } from './toast/ToastProvider.jsx';
 import { useReteAppEditor } from '../hooks/useReteAppEditor';
 import { createNodeByKind, clientToWorld, exportGraph, importGraph } from '../rete/app-editor';
 import { runLogic } from '../logic_interpreter/interpreter';
@@ -7,6 +8,7 @@ import { runLogic } from '../logic_interpreter/interpreter';
 // LogicEditorPage: 매수 / 매도 로직을 편집하는 컴포넌트
 // ----------------------------------------------------------------
 const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName = '' }) => {
+    const toast = useToast();
     const [logic, setLogic] = useState(null);
     const [logicName, setLogicName] = useState('');
     const [stock, setStock] = useState('');
@@ -36,15 +38,21 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         if (infoAreaRef.current) infoAreaRef.current.scrollTop = infoAreaRef.current.scrollHeight;
     }, [logs]);
 
-    // 초기 테마 동기화 (App과 동일한 규칙: localStorage > document > 시스템 선호)
+    // 초기 테마 동기화 (Electron Store > document > 시스템 선호)
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('theme');
-            if (saved === 'light' || saved === 'dark') {
-                setTheme(saved);
-                document.documentElement.setAttribute('data-theme', saved);
-                return;
-            }
+        (async () => {
+            try {
+                // @ts-ignore
+                if (window.electronAPI && window.electronAPI.getTheme) {
+                    // @ts-ignore
+                    const saved = await window.electronAPI.getTheme();
+                    if (saved === 'light' || saved === 'dark') {
+                        setTheme(saved);
+                        document.documentElement.setAttribute('data-theme', saved);
+                        return;
+                    }
+                }
+            } catch {}
             const htmlTheme = document.documentElement.getAttribute('data-theme');
             if (htmlTheme === 'light' || htmlTheme === 'dark') {
                 setTheme(htmlTheme);
@@ -54,7 +62,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const next = preferDark ? 'dark' : 'light';
             setTheme(next);
             document.documentElement.setAttribute('data-theme', next);
-        } catch {}
+        })();
     }, []);
 
     // logRunDetails 최신 값을 interval 콜백에서 사용할 수 있도록 ref로 동기화
@@ -67,27 +75,40 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const next = t === 'dark' ? 'light' : 'dark';
             try {
                 document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
+                // @ts-ignore
+                if (window.electronAPI && window.electronAPI.setTheme) {
+                    // @ts-ignore
+                    window.electronAPI.setTheme(next);
+                }
             } catch {}
             return next;
         });
     }, []);
 
-    // 1) 선택된 로직의 메타(이름 등) 먼저 세팅
+    // 1) 선택된 로직의 메타/본문 로드 (지연 로드)
     useEffect(() => {
-        if (selectedLogicId) {
-            const savedLogics = JSON.parse(localStorage.getItem('userLogics') || '[]');
-            const currentLogic = savedLogics.find(l => l.id === selectedLogicId);
-            if (currentLogic) {
-                setLogic(currentLogic);
-                setLogicName(currentLogic.name || '');
-                setStock(currentLogic.stock || '');
+        (async () => {
+            if (selectedLogicId) {
+                try {
+                    // @ts-ignore
+                    if (window.electronAPI && window.electronAPI.loadLogic) {
+                        // @ts-ignore
+                        const current = await window.electronAPI.loadLogic(selectedLogicId);
+                        if (current) {
+                            setLogic(current);
+                            setLogicName(current.name || '');
+                            setStock(current.stock || '');
+                            return;
+                        }
+                    }
+                } catch {}
+                // Electron 전용: 폴백 제거
+            } else {
+                setLogic(null);
+                setLogicName(defaultNewLogicName || '');
+                setStock('');
             }
-        } else {
-            setLogic(null);
-            setLogicName(defaultNewLogicName || '');
-            setStock('');
-        }
+        })();
     }, [selectedLogicId, defaultNewLogicName]);
 
     // 2) 에디터가 준비된 이후 그래프를 로드
@@ -160,11 +181,11 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
 
             // 그래프별 제한 규칙 적용
             if (which === 'buy') {
-                if (kind === 'sell') { alert('[드롭 차단] Sell 노드는 Buy 그래프에 추가 불가'); return; }
-                if (kind === 'roi') { alert('[드롭 차단] ROI 노드는 Buy 그래프에 추가 불가'); return; }
+                if (kind === 'sell') { toast.error('[드롭 차단] Sell 노드는 Buy 그래프에 추가 불가'); return; }
+                if (kind === 'roi') { toast.error('[드롭 차단] ROI 노드는 Buy 그래프에 추가 불가'); return; }
             }
             if (which === 'sell') {
-                if (kind === 'buy') { alert('[드롭 차단] Buy 노드는 Sell 그래프에 추가 불가'); return; }
+                if (kind === 'buy') { toast.error('[드롭 차단] Buy 노드는 Sell 그래프에 추가 불가'); return; }
             }
 
             const editorRef = which === 'buy' ? buyEditorRef : sellEditorRef;
@@ -180,8 +201,8 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const { x, y } = clientToWorld(area, container, e.clientX, e.clientY, e);
             const node = createNodeByKind(kind);
             // 추가 Buy/Sell 단일 개수 제한 보강 (importGraph 외 실시간)
-            if (node.kind === 'buy' && editor.getNodes().some(n => n.kind === 'buy')) { alert('[드롭 차단] Buy 노드는 1개만 허용'); return; }
-            if (node.kind === 'sell' && editor.getNodes().some(n => n.kind === 'sell')) { alert('[드롭 차단] Sell 노드는 1개만 허용'); return; }
+            if (node.kind === 'buy' && editor.getNodes().some(n => n.kind === 'buy')) { toast.warning('[드롭 차단] Buy 노드는 1개만 허용'); return; }
+            if (node.kind === 'sell' && editor.getNodes().some(n => n.kind === 'sell')) { toast.warning('[드롭 차단] Sell 노드는 1개만 허용'); return; }
             await editor.addNode(node);
             await area.nodeViews.get(node.id)?.translate(x, y);
         }, [buyEditorRef, sellEditorRef, buyAreaRef, sellAreaRef]);
@@ -207,10 +228,14 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             console.log('[로직 저장] 매수 그래프(JSON):\n', JSON.stringify(buyGraph, null, 2));
             console.log('[로직 저장] 매도 그래프(JSON):\n', JSON.stringify(sellGraph, null, 2));
             
-            onSave(payload);
+            await Promise.resolve(onSave(payload));
+            try {
+                toast.success('로직이 저장되었습니다.');
+            } catch {}
 
         } catch (e) {
             console.error('저장 중 오류:', e);
+            try { toast.error('저장 중 오류가 발생했습니다.'); } catch {}
         }
     };
 
