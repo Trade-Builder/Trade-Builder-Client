@@ -277,7 +277,6 @@ const AssetPage = ({
                             <button
                               className="px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-500 border border-red-500/40"
                               onClick={async () => {
-                                setOpenedMenuId(null);
                                 try {
                                   // @ts-ignore
                                   if (window.electronAPI && window.electronAPI.setRunningLogic) {
@@ -294,7 +293,6 @@ const AssetPage = ({
                             <button
                               className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
                               onClick={async () => {
-                                setOpenedMenuId(null);
                                 const meta = { id: logic.id, name: logic.name };
                                 try {
                                   // @ts-ignore
@@ -312,7 +310,6 @@ const AssetPage = ({
                           <button
                             className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white flex items-center gap-2"
                             onClick={() => {
-                              setOpenedMenuId(null);
                               setSelectedLogicForApi(logic.id);
                               if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
                             }}

@@ -122,11 +122,11 @@ const ApiKeySettings = ({ onKeysSaved, logicId }) => {
       <div className="mb-4 flex items-center gap-2 text-sm">
         <span className="text-gray-400">상태:</span>
         {isValid === null && (
-          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-neutral-700 bg-neutral-800 text-gray-300">확인되지 않음</span>
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-neutral-700 bg-neutral-800 text-gray-300">Unknown</span>
         )}
         {isValid === true && (
-          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-emerald-600/40 bg-emerald-500/10 text-emerald-300">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-cyan-600/40 bg-cyan-500/10 text-cyan-300">
+            <span className="inline-block h-2 w-2 rounded-full bg-cyan-400"></span>
             Active
           </span>
         )}
