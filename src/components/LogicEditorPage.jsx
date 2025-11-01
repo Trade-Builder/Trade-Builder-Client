@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReteAppEditor } from '../hooks/useReteAppEditor';
 import { createNodeByKind, clientToWorld, exportGraph, importGraph } from '../rete/app-editor';
 import { runLogic } from '../logic_interpreter/interpreter';
-import { backgroundRunner } from '../logic_interpreter/backgroundRunner';
 
 // ----------------------------------------------------------------
 // LogicEditorPage: 매수 / 매도 로직을 편집하는 컴포넌트
@@ -18,6 +17,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const [logRunDetails, setLogRunDetails] = useState(false);
     const logRunDetailsRef = useRef(false);
     const [isRunning, setIsRunning] = useState(false);
+    const runTimerRef = useRef(null);
     const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
     const { editorRef: sellEditorRef, areaRef: sellAreaRef, ready: sellReady } = useReteAppEditor(sellCanvasRef);
@@ -73,40 +73,21 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         });
     }, []);
 
-    // 1) 선택된 로직의 메타(이름 등) 먼저 세팅 (파일 저장소 우선, 폴백: localStorage)
+    // 1) 선택된 로직의 메타(이름 등) 먼저 세팅
     useEffect(() => {
-        const load = async () => {
-            if (selectedLogicId) {
-                try {
-                    // @ts-ignore
-                    let list = null;
-                    // @ts-ignore
-                    if (window.electronAPI && window.electronAPI.loadAllLogics) {
-                        // @ts-ignore
-                        list = await window.electronAPI.loadAllLogics();
-                    }
-                    if (!Array.isArray(list)) {
-                        list = JSON.parse(localStorage.getItem('userLogics') || '[]');
-                    }
-                    const currentLogic = (list || []).find(l => l.id === selectedLogicId);
-                    if (currentLogic) {
-                        setLogic(currentLogic);
-                        setLogicName(currentLogic.name || '');
-                        setStock(currentLogic.stock || '');
-                    }
-                } catch {
-                    // 폴백: 아무것도 못 불러오면 신규로 취급
-                    setLogic(null);
-                    setLogicName(defaultNewLogicName || '');
-                    setStock('');
-                }
-            } else {
-                setLogic(null);
-                setLogicName(defaultNewLogicName || '');
-                setStock('');
+        if (selectedLogicId) {
+            const savedLogics = JSON.parse(localStorage.getItem('userLogics') || '[]');
+            const currentLogic = savedLogics.find(l => l.id === selectedLogicId);
+            if (currentLogic) {
+                setLogic(currentLogic);
+                setLogicName(currentLogic.name || '');
+                setStock(currentLogic.stock || '');
             }
-        };
-        load();
+        } else {
+            setLogic(null);
+            setLogicName(defaultNewLogicName || '');
+            setStock('');
+        }
     }, [selectedLogicId, defaultNewLogicName]);
 
     // 2) 에디터가 준비된 이후 그래프를 로드
@@ -149,44 +130,6 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             }
         })();
     }, [logic, selectedLogicId, buyReady, sellReady, buyEditorRef, buyAreaRef, sellEditorRef, sellAreaRef]);
-
-    // 2-1) AssetPage에서 이미 실행 중인 상태로 들어온 경우
-    //      에디터에서 로그 콜백과 상세 옵션을 연결(업데이트)해 로그가 보이도록 한다.
-    useEffect(() => {
-        if (!selectedLogicId) return;
-        if (!backgroundRunner.isRunning(selectedLogicId)) return;
-
-        // 그래프는 에디터에서 export가 가능하면 export, 아니면 로드된 logic.data 사용
-        let buyGraph = null; let sellGraph = null;
-        try {
-            if (buyReady && buyEditorRef.current && buyAreaRef.current) {
-                buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
-            } else {
-                buyGraph = logic?.data?.buyGraph;
-            }
-            if (sellReady && sellEditorRef.current && sellAreaRef.current) {
-                sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-            } else {
-                sellGraph = logic?.data?.sellGraph;
-            }
-        } catch {}
-
-        if (!buyGraph && !sellGraph) return;
-
-        backgroundRunner.start(
-            selectedLogicId,
-            { stock, data: { buyGraph, sellGraph } },
-            { detailed: logRunDetailsRef.current, log: appendLog }
-        );
-        // start()는 이미 실행 중이면 내부 상태(log/detailed)만 업데이트
-    }, [selectedLogicId, isRunning, buyReady, sellReady, logic, stock, appendLog]);
-
-    // 2-2) 상세 로그 토글이 변경되면 실행 중일 때 러너에 즉시 반영
-    useEffect(() => {
-        if (!selectedLogicId) return;
-        if (!backgroundRunner.isRunning(selectedLogicId)) return;
-        backgroundRunner.setDetailed(selectedLogicId, logRunDetails);
-    }, [selectedLogicId, logRunDetails]);
 
         // 노드 드래그 시작 핸들러
         const onDragStart = useCallback((e, kind) => {
@@ -250,20 +193,8 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             const sellEditor = sellEditorRef.current;
             const sellArea = sellAreaRef.current;
 
-            if (!buyEditor || !buyArea || !sellEditor || !sellArea) {
-                alert('에디터가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
-                return;
-            }
-
-            const buyGraph = exportGraph(buyEditor, buyArea);
-            const sellGraph = exportGraph(sellEditor, sellArea);
-
-            const buyCount = Array.isArray(buyGraph?.nodes) ? buyGraph.nodes.length : 0;
-            const sellCount = Array.isArray(sellGraph?.nodes) ? sellGraph.nodes.length : 0;
-            if (buyCount === 0 && sellCount === 0) {
-                // 사용자가 저장이 안 된다고 느끼는 혼동 방지용 경고
-                console.warn('[저장 경고] 두 그래프 모두 노드가 없습니다. 빈 그래프로 저장합니다.');
-            }
+            const buyGraph = buyEditor && buyArea ? exportGraph(buyEditor, buyArea) : undefined;
+            const sellGraph = sellEditor && sellArea ? exportGraph(sellEditor, sellArea) : undefined;
 
             const updatedLogicData = { buyGraph, sellGraph };
 
@@ -283,28 +214,29 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         }
     };
 
-    // 러너 상태 구독: 선택된 로직의 실행 상태를 동기화
-    useEffect(() => {
-        const sync = () => {
-            if (!selectedLogicId) return setIsRunning(false);
-            setIsRunning(backgroundRunner.isRunning(selectedLogicId));
-        };
-        sync();
-        const unsub = backgroundRunner.subscribe(sync);
-        return unsub;
-    }, [selectedLogicId]);
-
     const startRun = () => {
-        if (!selectedLogicId) return;
-        const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
-        const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-        backgroundRunner.start(selectedLogicId, { stock, data: { buyGraph, sellGraph } }, { detailed: logRunDetailsRef.current, log: appendLog, intervalMs: 2000 });
+        if (isRunning) return;
         setIsRunning(true);
+        // 주기적으로 실행 (예: 2초마다)
+        const runOnce = () => {
+            try {
+                const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+                const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+                runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetailsRef.current);
+            } catch (e) {
+                appendLog('Error', String(e?.message || e));
+            }
+        };
+        // 시작 즉시 한 번 실행하여 반응성을 높임
+        runOnce();
+        runTimerRef.current = setInterval(runOnce, 2000);
     };
 
     const stopRun = () => {
-        if (!selectedLogicId) return;
-        backgroundRunner.stop(selectedLogicId);
+        if (runTimerRef.current) {
+            clearInterval(runTimerRef.current);
+            runTimerRef.current = null;
+        }
         setIsRunning(false);
     };
 
@@ -350,7 +282,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 <button onClick={onBack} className="px-4 py-2 text-base font-semibold text-gray-200 bg-neutral-800 border border-neutral-700 rounded-lg hover:bg-neutral-700">
                     &larr; 뒤로가기
                 </button>
-                <button onClick={handleSave} className="px-4 py-2 text-base font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-500 disabled:opacity-50 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]" disabled={!logicName}>
+                <button onClick={handleSave} className="px-4 py-2 text-base font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-500 disabled:opacity-50 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]" disabled={!logicName || !stock}>
                     저장하기
                 </button>
             </div>

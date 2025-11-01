@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ApiKeySettings from './ApiKeySettings';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { backgroundRunner } from '../logic_interpreter/backgroundRunner';
 
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지
@@ -22,7 +21,6 @@ const AssetPage = ({
   onApiKeysSaved
 }) => {
   const [runningLogic, setRunningLogic] = useState(null);
-  const [runningIds, setRunningIds] = useState([]);
   const [roi, setRoi] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -39,14 +37,6 @@ const AssetPage = ({
       setRunningLogic(JSON.parse(savedRunningLogic));
     }
     setRoi(7.25);
-  }, []);
-
-  // 러너 상태 구독 (실행 중 개수 업데이트)
-  useEffect(() => {
-    const sync = () => setRunningIds(backgroundRunner.getRunningIds());
-    sync();
-    const unsub = backgroundRunner.subscribe(sync);
-    return unsub;
   }, []);
 
   // API 키 유효성 검사 -> 상태 배지에 반영
@@ -76,6 +66,7 @@ const AssetPage = ({
     items.splice(result.destination.index, 0, reorderedItem);
     if (onReorderLogics) {
       onReorderLogics(items);
+      localStorage.setItem('userLogics', JSON.stringify(items));
     }
   };
 
@@ -102,6 +93,7 @@ const AssetPage = ({
     const newId = `logic-${Date.now()}`;
     const updated = logics.map((l) => (l.id === editingId ? { id: newId, name, data: {} } : l));
     onReorderLogics && onReorderLogics(updated);
+    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };
@@ -111,6 +103,7 @@ const AssetPage = ({
     if (!editingId) return;
     const updated = logics.filter((l) => l.id !== editingId);
     onReorderLogics && onReorderLogics(updated);
+    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };
@@ -199,7 +192,7 @@ const AssetPage = ({
         {[{
           title:'총 전략 수', value: String(logics.length||0)
         },{
-          title:'실행 중', value: String(runningIds.length)
+          title:'실행 중', value: runningLogic? '1' : '0'
         },{
           title:'누적 ROI', value: `${roi.toFixed(2)}%`
         },{
@@ -223,9 +216,7 @@ const AssetPage = ({
           {(provided) => (
             <div className='flex flex-col gap-3' ref={provided.innerRef} {...provided.droppableProps}>
               {logics.length > 0 ? (
-                logics.map((logic, index) => {
-                  const isRunning = backgroundRunner.isRunning(logic.id);
-                  return (
+                logics.map((logic, index) => (
                   // wrapper: 외곽 윤곽선은 ring으로 강조하고, 내부 경계선 색은 유지
                   <div key={logic.id} className="flex flex-col group rounded-xl ring-1 ring-transparent hover:ring-cyan-500/40 transition-shadow">
                     <Draggable draggableId={logic.id} index={index} isDragDisabled={logic.id === editingId}>
@@ -292,27 +283,6 @@ const AssetPage = ({
                     >
                       {openedMenuId === logic.id && (
                         <div className="flex flex-row justify-end w-full gap-2 px-4 py-2">
-                          {/* 실행/정지 토글 버튼 (드롭다운 유지) */}
-                          <button
-                            className={`px-3 py-1 rounded text-sm text-white ${isRunning ? 'bg-red-600 hover:bg-red-500' : 'bg-cyan-600 hover:bg-cyan-500'}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (isRunning) {
-                                backgroundRunner.stop(logic.id);
-                              } else {
-                                const stock = logic.stock || '';
-                                const data = logic.data || {};
-                                if (!data.buyGraph || !data.sellGraph) {
-                                  alert('저장된 그래프가 없습니다. 로직을 열어 저장한 뒤 실행해주세요.');
-                                  return;
-                                }
-                                backgroundRunner.start(logic.id, { stock, data }, { detailed: false, log: () => {} });
-                              }
-                            }}
-                          >
-                            {isRunning ? '정지하기' : '실행하기'}
-                          </button>
                         {/*  <button
                             className="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                             onClick={() => {
@@ -348,8 +318,7 @@ const AssetPage = ({
                       )}
                     </div>
                   </div>
-                );
-                })
+                ))
               ) : (
                 <p className="text-gray-400">저장된 로직이 없습니다.</p>
               )}

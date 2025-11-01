@@ -117,20 +117,20 @@ const App = () => {
     loadKeysAndFetchAssets();
   }, []);
 
-  // 모든 로직을 백그라운드 루틴으로 실행 (간단한 타이머 기반) --> 렌더링 오류 일으킴으로 비활성화
-  // useEffect(() => {
-  //   if (!runAllInBackground) return;
-  //   const id = setInterval(() => {
-  //     try {
-  //       logics.forEach((l) => {
-  //         if (!l?.data?.buyGraph || !l?.data?.sellGraph) return;
-  //         // 간단히 콘솔에만 로그 남김
-  //         runLogic(l.stock ?? '', { buyGraph: l.data.buyGraph, sellGraph: l.data.sellGraph }, () => {}, false);
-  //       });
-  //     } catch {}
-  //   }, 30000); // 30초마다 실행
-  //   return () => clearInterval(id);
-  // }, [runAllInBackground, logics]);
+  // 모든 로직을 백그라운드 루틴으로 실행 (간단한 타이머 기반)
+  useEffect(() => {
+    if (!runAllInBackground) return;
+    const id = setInterval(() => {
+      try {
+        logics.forEach((l) => {
+          if (!l?.data?.buyGraph || !l?.data?.sellGraph) return;
+          // 간단히 콘솔에만 로그 남김
+          runLogic(l.stock ?? '', { buyGraph: l.data.buyGraph, sellGraph: l.data.sellGraph }, () => {}, false);
+        });
+      } catch {}
+    }, 30000); // 30초마다 실행
+    return () => clearInterval(id);
+  }, [runAllInBackground, logics]);
 
   // 테마를 documentElement에 반영
   useEffect(() => {
@@ -280,17 +280,13 @@ const App = () => {
           onDeleteLogic={handleDeleteLogic}
           onReorderLogics={async (items)=>{
             setLogics(items);
-            // 임시 항목(_temp)이 하나라도 있으면 저장 자체를 건너뜀(빈 배열로 덮어쓰는 부작용 방지)
-            const hasTemp = Array.isArray(items) && items.some((l)=>l?._temp);
-            if (hasTemp) return;
-            const toPersist = Array.isArray(items) ? items : [];
             try {
               // @ts-ignore
               if (window.electronAPI && window.electronAPI.saveAllLogics) {
                 // @ts-ignore
-                await window.electronAPI.saveAllLogics(toPersist);
+                await window.electronAPI.saveAllLogics(items);
               } else {
-                localStorage.setItem('userLogics', JSON.stringify(toPersist));
+                localStorage.setItem('userLogics', JSON.stringify(items));
               }
             } catch {}
           }}
