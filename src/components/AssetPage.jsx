@@ -23,10 +23,57 @@ const AssetPage = ({
 }) => {
   const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
+  const [todayPnL, setTodayPnL] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
   const [currentPrices, setCurrentPrices] = useState({}); // 현재가 저장
+
+  // ROI 계산 함수
+  const calculateROI = () => {
+    if (!assets || assets.length === 0) return 0;
+
+    let totalInitialInvestment = 0;
+    let totalCurrentValue = 0;
+
+    assets.forEach(asset => {
+      if (asset.currency === 'KRW') return; // 원화는 제외
+
+      const balance = parseFloat(asset.balance) || 0;
+      const avgBuyPrice = parseFloat(asset.avg_buy_price) || 0;
+      const market = `KRW-${asset.currency}`;
+      const currentPrice = currentPrices[market] || avgBuyPrice;
+
+      totalInitialInvestment += balance * avgBuyPrice;
+      totalCurrentValue += balance * currentPrice;
+    });
+
+    if (totalInitialInvestment === 0) return 0;
+    return ((totalCurrentValue - totalInitialInvestment) / totalInitialInvestment) * 100;
+  };
+
+  // 오늘의 손익(P/L) 계산 함수
+  const calculateTodayPnL = () => {
+    if (!assets || assets.length === 0) return 0;
+
+    let todayPnL = 0;
+
+    assets.forEach(asset => {
+      if (asset.currency === 'KRW') return; // 원화는 제외
+
+      const balance = parseFloat(asset.balance) || 0;
+      const market = `KRW-${asset.currency}`;
+      const currentPrice = currentPrices[market];
+      const todayOpenPrice = currentPrices[`${market}_open`]; // 시가 정보가 필요합니다
+
+      if (currentPrice && todayOpenPrice) {
+        // 보유 수량 * (현재가 - 오늘시가)
+        todayPnL += balance * (currentPrice - todayOpenPrice);
+      }
+    });
+
+    return todayPnL;
+  };
 
   useEffect(() => {
     if (!localStorage.getItem('runningLogic')) {
@@ -37,8 +84,15 @@ const AssetPage = ({
     if (savedRunningLogic) {
       setRunningLogic(JSON.parse(savedRunningLogic));
     }
-    setRoi(7.25);
   }, []);
+
+  // 자산 정보나 현재가가 변경될 때마다 ROI와 P/L 계산
+  useEffect(() => {
+    const newRoi = calculateROI();
+    const newPnL = calculateTodayPnL();
+    setRoi(newRoi);
+    setTodayPnL(newPnL);
+  }, [assets, currentPrices]);
 
   // 자산 정보가 변경될 때마다 현재가 조회
   useEffect(() => {
@@ -250,7 +304,7 @@ const AssetPage = ({
         },{
           title:'누적 ROI', value: `${roi.toFixed(2)}%`
         },{
-          title:'오늘 P/L', value: `${(roi/100*1000).toFixed(0)}$`
+          title:'오늘 P/L', value: `₩${todayPnL.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`
         }].map((s,idx)=> (
           <div key={idx} className="p-5 rounded-2xl bg-neutral-900/70 border border-neutral-800/70 hover:border-cyan-500/40 transition">
             <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">{s.title}</div>

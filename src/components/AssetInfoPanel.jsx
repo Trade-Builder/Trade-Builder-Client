@@ -14,6 +14,19 @@ const AssetInfoPanel = ({ assets, assetsLoading, assetsError, onRefresh }) => {
     }, 0);
   };
 
+  // ROI 계산 함수
+  const calculateROI = (asset) => {
+    const balance = parseFloat(asset.balance) || 0;
+    const avgBuyPrice = parseFloat(asset.avg_buy_price) || 0;
+    const currentPrice = parseFloat(asset.current_price) || avgBuyPrice;
+    
+    const initialInvestment = balance * avgBuyPrice;
+    const currentValue = balance * currentPrice;
+    
+    if (initialInvestment === 0) return 0;
+    return ((currentValue - initialInvestment) / initialInvestment) * 100;
+  };
+
   // 원화 자산 찾기
   const krwAsset = assets?.find(asset => asset.currency === 'KRW');
   const krwBalance = krwAsset ? parseFloat(krwAsset.balance) : 0;
@@ -139,11 +152,18 @@ const AssetInfoPanel = ({ assets, assetsLoading, assetsError, onRefresh }) => {
                         평단가: <span className="text-gray-300">₩{avgBuyPrice.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</span>
                       </div>
                     </div>
-                    {locked > 0 && (
-                      <div className="mt-1 text-xs text-gray-500">
-                        잠김: {locked.toFixed(8)} {asset.currency}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="text-xs text-gray-400">
+                        수익률: <span className={`${calculateROI(asset) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {calculateROI(asset).toFixed(2)}%
+                        </span>
                       </div>
-                    )}
+                      {locked > 0 && (
+                        <div className="text-xs text-gray-500">
+                          잠김: {locked.toFixed(8)} {asset.currency}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
