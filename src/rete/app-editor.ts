@@ -12,10 +12,6 @@ import { CustomConnection } from '../customization/CustomConnection'
 import { addCustomBackground } from '../customization/custom-background'
 import '../customization/background.css'
 
-// 전역(모듈) 공유 클립보드: Buy/Sell 등 서로 다른 캔버스 인스턴스 간에도
-// 복사한 서브그래프를 붙여넣을 수 있도록 모듈 레벨 변수로 유지한다.
-export let sharedClipboard: SerializedGraph | null = null
-
 // -------------------- 타입 선언/유틸 --------------------
 export type NodeKind =
     'stock'
@@ -338,19 +334,25 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     menu.style.position = 'absolute'
     menu.style.zIndex = '50'
     menu.style.display = 'none'
-    menu.style.background = 'white'
-    menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-    menu.style.borderRadius = '8px'
-    menu.style.padding = '6px'
-        ; (menu.style as any).border = '1px solid #e5e7eb'
-    menu.style.minWidth = '100px'
+    // 다크 테마와 조화로운 컨텍스트 메뉴 스타일
+    menu.style.background = '#0b1220'
+    menu.style.boxShadow = '0 8px 24px rgba(0,0,0,0.35)'
+    menu.style.borderRadius = '10px'
+    menu.style.padding = '4px'
+        ; (menu.style as any).border = '1px solid #1f2937'
+    // 글자 폭에 맞게 자동 너비, 줄바꿈 방지로 좌우 폭을 최소화
+    ;(menu.style as any).minWidth = 'auto'
+    ;(menu.style as any).whiteSpace = 'nowrap'
     const delBtn = document.createElement('button')
     delBtn.textContent = '삭제'
-    delBtn.style.width = '100%'
+    delBtn.style.display = 'block'
+    delBtn.style.width = 'auto'
     delBtn.style.padding = '6px 10px'
-    delBtn.style.color = '#fff'
-    delBtn.style.background = '#ef4444'
-    delBtn.style.borderRadius = '6px'
+    delBtn.style.margin = '2px 4px'
+    delBtn.style.textAlign = 'center'
+    delBtn.style.color = '#ffffff'
+    delBtn.style.background = '#ef4444' // red-500
+    delBtn.style.borderRadius = '8px'
         ; (delBtn.style as any).border = 'none'
     delBtn.style.cursor = 'pointer'
     menu.appendChild(delBtn)
@@ -367,6 +369,23 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         menu.style.top = `${clientY - rect.top}px`
         menu.style.display = 'block'
         currentNode = node
+        // 메뉴 표시 후 버튼 폭을 "잘라내기" 버튼에 맞춰 정렬
+        requestAnimationFrame(() => {
+            try {
+                // 측정 전 초기화
+                delBtn.style.width = 'auto'
+                copyBtn.style.width = 'auto'
+                // cutBtn이 현재 메뉴에 존재할 때만 정렬 수행
+                if (menu.contains(cutBtn)) {
+                    const w = cutBtn.offsetWidth
+                    if (w && w > 0) {
+                        const px = `${w}px`
+                        delBtn.style.width = px
+                        copyBtn.style.width = px
+                    }
+                }
+            } catch { /* noop */ }
+        })
     }
 
     function findNodeAt(clientX: number, clientY: number): TradeNode | null {
@@ -415,8 +434,9 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     })
 
     // -------------------- 마퀴(드래그 사각형) 선택 & 복사/붙여넣기 --------------------
-    // 상태: 선택된 노드 집합 및 (메뉴 위치, 전역 클립보드는 모듈 변수 사용)
+    // 상태: 선택된 노드 집합 및 로컬(에디터 인스턴스) 클립보드
     const selectedNodeIds = new Set<string>()
+    let clipboard: SerializedGraph | null = null
     let lastContextPosClient: { x: number; y: number } | null = null
 
     // --- Undo/Redo 히스토리 ---
@@ -446,8 +466,23 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     }
     // 초기 스냅샷 저장
     pushHistory()
+    // 포커스/호버 기반 활성화 플래그 (이 인스턴스 전용)
+    let isActive = false
+    try { (container as any).tabIndex = (container as any).tabIndex ?? 0 } catch { /* noop */ }
+    const onEnter = () => { isActive = true }
+    const onLeave = () => { isActive = false }
+    const onFocusIn = () => { isActive = true }
+    const onFocusOut = (ev: FocusEvent) => { try { if (!container.contains((ev.relatedTarget as any) || null)) isActive = false } catch { isActive = false } }
+    container.addEventListener('pointerenter', onEnter)
+    container.addEventListener('pointerleave', onLeave)
+    container.addEventListener('focusin', onFocusIn)
+    container.addEventListener('focusout', onFocusOut)
+
     // Ctrl/Cmd+Z (Undo), Ctrl/Cmd+Shift+Z 또는 Ctrl+Y (Redo)
     const onKeyUndoRedo = (e: KeyboardEvent) => {
+        if (!isActive) return
+        const ae = document.activeElement as HTMLElement | null
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || (ae as any).isContentEditable)) return
         const key = String(e.key || '').toLowerCase()
         const ctrl = e.ctrlKey || e.metaKey
         if (!ctrl) return
@@ -619,30 +654,50 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     // 컨텍스트 메뉴 확장: 선택 존재 시 복사, 빈 공간에서 붙여넣기
     const copyBtn = document.createElement('button')
     copyBtn.textContent = '복사'
-    copyBtn.style.width = '100%'
+    copyBtn.style.display = 'block'
+    copyBtn.style.width = 'auto'
     copyBtn.style.padding = '6px 10px'
-    copyBtn.style.color = '#111827'
-    copyBtn.style.background = '#e0f2fe' // light cyan
-    copyBtn.style.borderRadius = '6px'
+    copyBtn.style.margin = '2px 4px'
+    copyBtn.style.textAlign = 'center'
+    copyBtn.style.color = '#182031ff'
+    copyBtn.style.background = '#ffffff'
+    copyBtn.style.borderRadius = '8px'
     ;(copyBtn.style as any).border = 'none'
     copyBtn.style.cursor = 'pointer'
 
     const pasteBtn = document.createElement('button')
     pasteBtn.textContent = '붙여넣기'
-    pasteBtn.style.width = '100%'
+    pasteBtn.style.display = 'block'
+    pasteBtn.style.width = 'auto'
     pasteBtn.style.padding = '6px 10px'
-    pasteBtn.style.color = '#111827'
-    pasteBtn.style.background = '#d1fae5' // light green-ish
-    pasteBtn.style.borderRadius = '6px'
+    pasteBtn.style.margin = '2px 4px'
+    pasteBtn.style.textAlign = 'center'
+    pasteBtn.style.color = '#182031ff'
+    pasteBtn.style.background = '#ffffff'
+    pasteBtn.style.borderRadius = '8px'
     ;(pasteBtn.style as any).border = 'none'
     pasteBtn.style.cursor = 'pointer'
 
+    const cutBtn = document.createElement('button')
+    cutBtn.textContent = '잘라내기'
+    cutBtn.style.display = 'block'
+    cutBtn.style.width = 'auto'
+    cutBtn.style.padding = '6px 10px'
+    cutBtn.style.margin = '2px 4px'
+    cutBtn.style.textAlign = 'center'
+    cutBtn.style.color = '#182031ff'
+    cutBtn.style.background = '#efd4adff'
+    cutBtn.style.borderRadius = '8px'
+    ;(cutBtn.style as any).border = 'none'
+    cutBtn.style.cursor = 'pointer'
+
     // 기존 메뉴에 동적으로 버튼 구성
-    function rebuildMenuButtons({ allowDelete, allowCopy, allowPaste }: { allowDelete: boolean; allowCopy: boolean; allowPaste: boolean }) {
+    function rebuildMenuButtons({ allowDelete, allowCopy, allowPaste, allowCut }: { allowDelete: boolean; allowCopy: boolean; allowPaste: boolean; allowCut: boolean }) {
         // 초기화
         while (menu.firstChild) menu.removeChild(menu.firstChild)
         if (allowDelete) menu.appendChild(delBtn)
         if (allowCopy) menu.appendChild(copyBtn)
+        if (allowCut) menu.appendChild(cutBtn)
         if (allowPaste) menu.appendChild(pasteBtn)
     }
 
@@ -653,20 +708,20 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         const idSet = new Set(Array.from(selectedNodeIds))
         const nodes = (full.nodes || []).filter(n => idSet.has(n.id))
         const connections = (full.connections || []).filter(c => idSet.has(c.source) && idSet.has(c.target))
-        // 전역 클립보드에 저장해 다른 에디터에서도 접근 가능하게 한다
-        sharedClipboard = { nodes, connections, viewport: undefined }
+        // 로컬 클립보드에 저장 (에디터 인스턴스 한정)
+        clipboard = { nodes, connections, viewport: undefined }
         closeMenu()
     }
 
     // 붙여넣기: 빈 공간을 기준으로 상대 위치를 유지하여 노드 생성 후 연결 복원
     async function handlePaste(clientX: number, clientY: number) {
-        if (!sharedClipboard || !sharedClipboard.nodes?.length) return
+        if (!clipboard || !clipboard.nodes?.length) return
         const world = clientToWorld(area, container, clientX, clientY)
-        const minX = Math.min(...sharedClipboard.nodes.map(n => n.position?.x ?? 0))
-        const minY = Math.min(...sharedClipboard.nodes.map(n => n.position?.y ?? 0))
+        const minX = Math.min(...clipboard.nodes.map((n: any) => n.position?.x ?? 0))
+        const minY = Math.min(...clipboard.nodes.map((n: any) => n.position?.y ?? 0))
         const map = new Map<string, TradeNode>()
         // 1) 노드 생성
-        for (const n of sharedClipboard.nodes) {
+        for (const n of clipboard.nodes) {
             try {
                 const kind = n.kind || labelToKind(n.label) || 'const'
                 const node = createNodeByKind(kind as NodeKind)
@@ -687,7 +742,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             } catch { /* noop */ }
         }
         // 2) 연결 생성
-        for (const c of (sharedClipboard.connections || [])) {
+        for (const c of (clipboard.connections || [])) {
             const source = map.get(c.source)
             const target = map.get(c.target)
             if (source && target) {
@@ -710,21 +765,45 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         if (pos) handlePaste(pos.x, pos.y)
     })
 
+    // 잘라내기: 선택된 노드를 복사한 뒤 제거
+    cutBtn.addEventListener('click', async () => {
+        if (selectedNodeIds.size === 0) { closeMenu(); return }
+        // 1) 복사
+        await handleCopy()
+        // 2) 삭제 (선택된 전체)
+        const targetIds: string[] = Array.from(selectedNodeIds)
+        for (const id of targetIds) {
+            try {
+                const cons = editor
+                    .getConnections()
+                    .filter((c: any) => c.source === id || c.target === id)
+                for (const c of cons) {
+                    try { await (editor as any).removeConnection(c.id) } catch { /* noop */ }
+                }
+                await (editor as any).removeNode(id)
+            } catch { /* noop */ }
+        }
+        selectedNodeIds.clear()
+        applySelectionOutline()
+        pushHistory()
+        closeMenu()
+    })
+
     // 컨텍스트 메뉴 동작 수정: 선택/클립보드 상태에 따라 버튼 구성
     container.addEventListener('contextmenu', (e) => {
         e.preventDefault()
         lastContextPosClient = { x: e.clientX, y: e.clientY }
         const node = findNodeAt(e.clientX, e.clientY)
         const hasSelection = selectedNodeIds.size > 0
-        const hasClipboard = !!(sharedClipboard && sharedClipboard.nodes && sharedClipboard.nodes.length)
+    const hasClipboard = !!(clipboard && clipboard.nodes && clipboard.nodes.length)
         if (node) {
-            // 노드 위: 삭제 + (선택 존재 시) 복사
-            rebuildMenuButtons({ allowDelete: true, allowCopy: hasSelection, allowPaste: false })
+            // 노드 위: 삭제 + (선택 존재 시) 복사/잘라내기
+            rebuildMenuButtons({ allowDelete: true, allowCopy: hasSelection, allowPaste: false, allowCut: hasSelection })
             openMenu(e.clientX, e.clientY, node)
         } else {
-            // 빈 공간: 붙여넣기만 (클립보드 존재 시)
-            if (hasClipboard) {
-                rebuildMenuButtons({ allowDelete: false, allowCopy: false, allowPaste: true })
+            // 빈 공간: 선택이 있다면 복사/잘라내기, 클립보드가 있으면 붙여넣기
+            if (hasSelection || hasClipboard) {
+                rebuildMenuButtons({ allowDelete: false, allowCopy: hasSelection, allowPaste: hasClipboard, allowCut: hasSelection })
                 openMenu(e.clientX, e.clientY, null as any)
             } else {
                 closeMenu()
@@ -732,8 +811,11 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         }
     })
 
-    // 키보드 복사/붙여넣기 지원 (전역 클립보드 기반)
+    // 키보드 복사/붙여넣기/잘라내기 지원 (인스턴스 로컬 클립보드 기반)
     const onKeyCopyPaste = (e: KeyboardEvent) => {
+        if (!isActive) return
+        const ae = document.activeElement as HTMLElement | null
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || (ae as any).isContentEditable)) return
         const key = String(e.key || '').toLowerCase()
         const ctrl = e.ctrlKey || e.metaKey
         if (!ctrl) return
@@ -741,8 +823,29 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             if (selectedNodeIds.size) {
                 e.preventDefault(); e.stopPropagation(); void handleCopy()
             }
+        } else if (key === 'x') {
+            if (selectedNodeIds.size) {
+                e.preventDefault(); e.stopPropagation()
+                // copy then delete selection
+                void (async () => {
+                    await handleCopy()
+                    const ids = Array.from(selectedNodeIds)
+                    for (const id of ids) {
+                        try {
+                            const cons = editor
+                                .getConnections()
+                                .filter((c: any) => c.source === id || c.target === id)
+                            for (const c of cons) {
+                                try { await (editor as any).removeConnection(c.id) } catch { /* noop */ }
+                            }
+                            await (editor as any).removeNode(id)
+                        } catch { /* noop */ }
+                    }
+                    selectedNodeIds.clear(); applySelectionOutline(); pushHistory()
+                })()
+            }
         } else if (key === 'v') {
-            const hasClipboard = !!(sharedClipboard && sharedClipboard.nodes && sharedClipboard.nodes.length)
+            const hasClipboard = !!(clipboard && clipboard.nodes && clipboard.nodes.length)
             if (hasClipboard) {
                 e.preventDefault(); e.stopPropagation()
                 const rect = container.getBoundingClientRect()
@@ -762,6 +865,10 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             // cleanup
             container.removeEventListener('pointerdown', onPointerDownCapture, { capture: true } as any)
             container.removeEventListener('pointermove', onContainerPointerMove, { capture: true } as any)
+            container.removeEventListener('pointerenter', onEnter)
+            container.removeEventListener('pointerleave', onLeave)
+            container.removeEventListener('focusin', onFocusIn)
+            container.removeEventListener('focusout', onFocusOut)
             closeMenu()
             menu.remove()
             marquee.remove()
