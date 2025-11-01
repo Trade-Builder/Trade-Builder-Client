@@ -42,17 +42,13 @@ class Interpreter {
     buyOrderData: OrderData;
     sellOrderData: OrderData;
 
-    // parsing cache
-    nodes: Map<string, any>;
-    connections: Map<string, string[]>;
-
-    log: null | ((title: string, msg: string) => void);
+    log: ((title: string, msg: string) => void);
 
     dataManager: APIManager;
 
     constructor() {
         this.stock = "KRW-BTC";
-        this.log = null;
+        this.log = (a, b) => {};
         this.dataManager = new APIManager();
 
         this.logicID = null;
@@ -61,31 +57,17 @@ class Interpreter {
 
         this.buyOrderData = new OrderData();
         this.sellOrderData = new OrderData();
-
-        this.nodes = new Map<string, any>();
-        this.connections = new Map<string, string[]>();
-    }
-
-    public parse(data: any) {
-        try {
-            this.tryParse(data);
-        } catch (error: any) {
-            if (this.log != null) 
-                this.log("Error", error.message);
-            return;
-        }
-        this.parseComplete = true;
     }
 
     public run(logDetails: boolean) {
         if (!this.parseComplete) { return; }
-        this.runBuy(logDetails);
-        //this.runSell(logDetails);
+        if (this.buyRoot != null) this.runBuy(logDetails);
+        if (this.sellRoot != null) this.runSell(logDetails);
     }
 
     public runBuy(logDetails: boolean) {
         let result: boolean;
-        if (logDetails && this.log != null) {
+        if (logDetails) {
             result = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
         }
         else {
@@ -93,14 +75,14 @@ class Interpreter {
         }
         if (result) {
             this.doBuy();
-        } else if (this.log != null) {
-            this.log("Buy", "매수 조건 미충족");
+        } else {
+            this.log("BuyGraph", "매수 조건 미충족");
         }
     }
 
     public runSell(logDetails: boolean) {
         let result: boolean;
-        if (logDetails && this.log != null) {
+        if (logDetails) {
             result = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
         }
         else {
@@ -108,68 +90,89 @@ class Interpreter {
         }
         if (result) {
             this.doSell();
-        } else if (this.log != null) {
-            this.log("Sell", "매도 조건 미충족");
+        } else {
+            this.log("SellGraph", "매도 조건 미충족");
         }
+    }
+
+    public parse(data: any) {
+        this.buyRoot = null;
+        this.sellRoot = null;
+        try {
+            this.tryParse(data);
+        } catch (error: any) {
+            this.log("Error", error.message);
+            this.parseComplete = false;
+            return;
+        }
+        this.parseComplete = true;
     }
 
     private tryParse(data: any) {
         const buyNode = data.buyGraph.nodes.find((n: any) => n.kind === "buy");
-        if (buyNode === undefined) {
-            throw new Error("매수 노드가 없습니다.");
-        }
         const sellNode = data.sellGraph.nodes.find((n: any) => n.kind === "sell");
-        if (sellNode === undefined) {
-            throw new Error("매도 노드가 없습니다.");
+        if (buyNode === undefined && sellNode === undefined) {
+            throw new Error("매수/매도 노드가 모두 없습니다. 적어도 하나의 로직이 필요합니다.");
         }
-        this.buyOrderData.init(buyNode.controls);
-        this.sellOrderData.init(sellNode.controls);
+        if (buyNode !== undefined) {
+            this.parseBuy(buyNode, data.buyGraph);
+        }
+        if (sellNode !== undefined) {
+            this.parseSell(sellNode, data.sellGraph);
+        }
+    }
 
-        data.buyGraph.nodes.forEach((node: any) => {
-            this.nodes.set(node.id, {
+    private parseBuy(buyNode: any, buyGraph: any) {
+        this.buyOrderData.init(buyNode.controls);
+        const nodes = new Map<string, any>();
+        const connections = new Map<string, string[]>();
+
+        buyGraph.nodes.forEach((node: any) => {
+            nodes.set(node.id, {
                 kind: node.kind,
                 controls: node.controls,
             });
         });
-        data.buyGraph.connections.forEach((conn: any) => {
-            if (!this.connections.has(conn.target)) {
-                this.connections.set(conn.target, []);
+        buyGraph.connections.forEach((conn: any) => {
+            if (!connections.has(conn.target)) {
+                connections.set(conn.target, []);
             }
-            this.connections.get(conn.target)!!.push(conn.source);
+            connections.get(conn.target)!!.push(conn.source);
         });
-        const buyNodeChild = this.connections.get(buyNode.id);
+        const buyNodeChild = connections.get(buyNode.id);
         if (buyNodeChild === undefined) {
             throw new Error("매수 노드에 연결된 조건이 없습니다.");
         }
-        this.buyRoot = this.parseRecursive(buyNodeChild[0]);
+        this.buyRoot = this.parseRecursive(buyNodeChild[0], nodes, connections);
+    }
 
-        this.nodes.clear();
-        this.connections.clear();
-        data.sellGraph.nodes.forEach((node: any) => {
-            this.nodes.set(node.id, {
+    private parseSell(sellNode: any, sellGraph: any) {
+        this.sellOrderData.init(sellNode.controls);
+        const nodes = new Map<string, any>();
+        const connections = new Map<string, string[]>();
+
+        sellGraph.nodes.forEach((node: any) => {
+            nodes.set(node.id, {
                 kind: node.kind,
                 controls: node.controls,
             });
         });
-        data.sellGraph.connections.forEach((conn: any) => {
-            if (!this.connections.has(conn.target)) {
-                this.connections.set(conn.target, []);
+        sellGraph.connections.forEach((conn: any) => {
+            if (!connections.has(conn.target)) {
+                connections.set(conn.target, []);
             }
-            this.connections.get(conn.target)!!.push(conn.source);
+            connections.get(conn.target)!!.push(conn.source);
         });
 
-        const sellNodeChild = this.connections.get(sellNode.id);
+        const sellNodeChild = connections.get(sellNode.id);
         if (sellNodeChild === undefined) {
             throw new Error("매도 노드에 연결된 조건이 없습니다.");
         }
-        this.sellRoot = this.parseRecursive(sellNodeChild[0]);
-
-        this.nodes.clear();
-        this.connections.clear();
+        this.sellRoot = this.parseRecursive(sellNodeChild[0], nodes, connections);
     }
 
-    private parseRecursive(nodeID: string): AST {
-        const node = this.nodes.get(nodeID);
+    private parseRecursive(nodeID: string, nodes: Map<string, any>, connections: Map<string, string[]>): AST {
+        const node = nodes.get(nodeID);
         switch (node.kind) {
             case "const":
                 return new ConstantAST(this.dataManager, tryParseInt(node.controls.value));
@@ -188,24 +191,30 @@ class Interpreter {
             case "roi":
                 return new RoiAST(this.dataManager);
             case "logicOp": {
-                const children = this.connections.get(nodeID);
+                const children = connections.get(nodeID);
                 if (children === undefined) {
                     throw new Error("논리 노드에 연결된 자식이 없습니다");
                 }
                 if (children.length < 2) {
                     throw new Error("논리 노드에 피연산자 노드가 부족합니다.");
                 }
-                return new LogicOpAST(node.controls.operator, this.parseRecursive(children[0]), this.parseRecursive(children[1]));
+                return new LogicOpAST(node.controls.operator, 
+                    this.parseRecursive(children[0], nodes, connections), 
+                    this.parseRecursive(children[1], nodes, connections)
+                );
             }
             case "compare": {
-                const children = this.connections.get(nodeID);
+                const children = connections.get(nodeID);
                 if (children === undefined) {
                     throw new Error("비교 노드에 연결된 자식이 없습니다");
                 }
                 if (children.length < 2) {
                     throw new Error("비교 노드에 피연산자 노드가 부족합니다.");
                 }
-                return new CompareAST(node.controls.operator, this.parseRecursive(children[0]), this.parseRecursive(children[1]));
+                return new CompareAST(node.controls.operator, 
+                    this.parseRecursive(children[0], nodes, connections), 
+                    this.parseRecursive(children[1], nodes, connections)
+                );
             }
             default:
                 throw new Error(`알 수 없는 노드 종류: ${node.kind}`);
@@ -213,31 +222,47 @@ class Interpreter {
     }
 
     private async doBuy() {
-        let msg = '';
+        const log = this.log.bind(this, "BuyGraph");
         if (this.buyOrderData.orderType === 'market') {
-            await window.electronAPI.marketBuy(this.stock, this.buyOrderData.quantity);
-            msg = `시장가 ${this.buyOrderData.quantity}원어치 매수`;
+            log(`시장가 ${this.buyOrderData.quantity}₩어치 매수를 시도합니다.`);
+            const result = await window.electronAPI.marketBuy(this.stock, this.buyOrderData.quantity);
+            if (result.success) {
+                log(`시장가 ${this.buyOrderData.quantity}₩어치 매수 완료`);
+            } else {
+                log(`시장가 매수 실패: ${result.error}`);
+            }
         }
         else {
-            await window.electronAPI.limitBuyWithKRW(this.stock, this.buyOrderData.limitPrice, this.buyOrderData.quantity);
-            msg = `지정가 ${this.buyOrderData.limitPrice}$에 ${this.buyOrderData.quantity}원어치 매수`;
+            log(`지정가 ${this.buyOrderData.limitPrice}₩에 ${this.buyOrderData.quantity}₩어치 매수를 시도합니다.`);
+            const result = await window.electronAPI.limitBuyWithKRW(this.stock, this.buyOrderData.limitPrice, this.buyOrderData.quantity);
+            if (result.success) {
+                log(`지정가 ${this.buyOrderData.limitPrice}₩에 ${this.buyOrderData.quantity}₩어치 매수 완료`);
+            } else {
+                log(`지정가 매수 실패: ${result.error}`);
+            }
         }
-        if (this.log != null) 
-            this.log("Buy", msg);
     }
 
     private async doSell() {
-        let msg = '';
+        const log = this.log.bind(this, "SellGraph");
         if (this.sellOrderData.orderType === 'market') {
-            await window.electronAPI.marketSell(this.stock, this.sellOrderData.quantity);
-            msg = `시장가 ${this.sellOrderData.quantity}원어치 매도`;
+            log(`시장가 ${this.sellOrderData.quantity}₩어치 매도를 시도합니다.`);
+            const result = await window.electronAPI.marketSell(this.stock, this.sellOrderData.quantity);
+            if (result.success) {
+                log(`시장가 ${this.sellOrderData.quantity}₩어치 매도 완료`);
+            } else {
+                log(`시장가 매도 실패: ${result.error}`);
+            }
         }
         else {
-            await window.electronAPI.limitSellWithKRW(this.stock, this.sellOrderData.limitPrice, this.sellOrderData.quantity);
-            msg = `지정가 ${this.sellOrderData.limitPrice}$에 ${this.sellOrderData.quantity}원어치 매도`;
+            log(`지정가 ${this.sellOrderData.limitPrice}₩에 ${this.sellOrderData.quantity}₩어치 매도 시도`);
+            const result = await window.electronAPI.limitSellWithKRW(this.stock, this.sellOrderData.limitPrice, this.sellOrderData.quantity);
+            if (result.success) {
+                log(`지정가 ${this.sellOrderData.limitPrice}₩에 ${this.sellOrderData.quantity}₩어치 매도 완료`);
+            } else {
+                log(`지정가 매도 실패: ${result.error}`);
+            }
         }
-        if (this.log != null)
-             this.log("Sell", msg);
     }
 
     public setStock(stock: string) {

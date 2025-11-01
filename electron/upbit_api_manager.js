@@ -185,9 +185,9 @@ export async function placeOrder(options) {
     const { market, side, orderType, price, volume } = options;
 
     // 주문 타입별 body 구성
-    let body = {
-      market: market,
-      side: side,  // 'bid' (매수) or 'ask' (매도)
+    const body = {
+      market,
+      side,  // 'bid' (매수) or 'ask' (매도)
     };
 
     if (orderType === 'market') {
@@ -232,7 +232,7 @@ export async function placeOrder(options) {
       data: response.data
     };
   } catch (error) {
-    const errorMessage = error.response ? error.response.data : error.message;
+    const errorMessage = error.response ? error.response.data.error.message : error.message;
     console.error('[주문 실패]', errorMessage);
     return {
       success: false,
@@ -258,9 +258,18 @@ export async function marketBuy(market, price) {
 /**
  * 시장가 매도 (간편 함수)
  * @param {string} market - 마켓 코드
- * @param {number} volume - 매도 수량
+ * @param {number} krwAmount - 매도할 KRW 금액
  */
-export async function marketSell(market, volume) {
+export async function marketSell(market, krwAmount) {
+  // 현재가 조회
+  const priceInfo = await getCurrentPrice(market);
+  if (!priceInfo.success) {
+    return priceInfo;
+  }
+
+  // KRW 금액을 수량으로 변환
+  const volume = krwAmount / priceInfo.price;
+
   return placeOrder({
     market,
     side: 'ask',
@@ -268,7 +277,6 @@ export async function marketSell(market, volume) {
     volume
   });
 }
-
 
 
 /**
@@ -290,7 +298,7 @@ export async function getCurrentPrice(market) {
       data: response.data[0]
     };
   } catch (error) {
-    const errorMessage = error.response ? error.response.data : error.message;
+    const errorMessage = error.response ? error.response.data.error.message : error.message;
     console.error('[현재가 조회 실패]', errorMessage);
     return {
       success: false,

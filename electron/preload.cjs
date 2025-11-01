@@ -72,11 +72,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /**
    * 업비트 시장가 매도
    * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
-   * @param {number} volume - 매도할 코인 수량
+   * @param {number} krwAmount - 매도할 KRW 금액
    * @returns {Promise<{success: boolean, data?: any, error?: any}>}
    */
-  marketSell: (market, volume) =>
-    ipcRenderer.invoke('upbit:marketSell', market, volume),
+  marketSell: (market, krwAmount) =>
+    ipcRenderer.invoke('upbit:marketSell', market, krwAmount),
 
   /**
    * 현재가 조회 (단일 마켓)

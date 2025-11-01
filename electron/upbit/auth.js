@@ -1,6 +1,7 @@
 import { SignJWT } from 'jose';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import quarystring from 'querystring';
 
 /**
  * Creates a JWT token for Upbit API authentication
@@ -17,9 +18,7 @@ export async function createUpbitJWT(accessKey, secretKey, queryParams = null) {
 
   // If query parameters exist, create SHA512 hash
   if (queryParams) {
-    const query = new URLSearchParams(
-      Object.entries(queryParams).sort(([a], [b]) => a.localeCompare(b))
-    ).toString();
+    const query = quarystring.stringify(queryParams);
 
     const hash = crypto.createHash('sha512');
     const queryHash = hash.update(query, 'utf-8').digest('hex');

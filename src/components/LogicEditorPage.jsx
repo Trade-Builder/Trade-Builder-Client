@@ -217,7 +217,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                   className="ml-[80px] bg-neutral-900 text-gray-200 border border-neutral-700 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
                 >
                   <option value="">종목 선택</option>
-                  <option value="AAPL">AAPL</option>
+                  <option value="KRW-BTC">KRW-BTC</option>
                   <option value="NVDA">NVDA</option>
                   <option value="TSLA">TSLA</option>
                   <option value="MSFT">MSFT</option>

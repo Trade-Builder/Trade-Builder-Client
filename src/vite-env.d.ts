@@ -104,12 +104,12 @@ export declare global {
       /**
        * 업비트 시장가 매도
        * @param market - 마켓 코드 (예: 'KRW-BTC')
-       * @param volume - 매도할 코인 수량
+       * @param price - 주문 금액 (KRW)
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       marketSell: (
         market: string,
-        volume: number
+        price: number
       ) => Promise<{
         success: boolean;
         data?: any;

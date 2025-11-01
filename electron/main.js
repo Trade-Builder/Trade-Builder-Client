@@ -99,8 +99,8 @@ ipcMain.handle('upbit:marketBuy', async (event, market, price) => {
 });
 
 // IPC: 시장가 매도
-ipcMain.handle('upbit:marketSell', async (event, market, volume) => {
-  return await marketSell(market, volume);
+ipcMain.handle('upbit:marketSell', async (event, market, krwAmount) => {
+  return await marketSell(market, krwAmount);
 });
 
 // IPC: 현재가 조회 (단일 마켓)
