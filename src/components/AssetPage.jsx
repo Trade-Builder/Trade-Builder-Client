@@ -12,9 +12,9 @@ const AssetPage = ({
   assetsLoading,
   assetsError,
   onLogicClick,
-  onAddNewLogic,
   onDeleteLogic,
   onReorderLogics,
+  onCreateLogic,
   onRefreshAssets,
   onOpenApiKeySettings,
   showApiKeySettings,
@@ -27,6 +27,8 @@ const AssetPage = ({
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
+  const [selectedLogicForApi, setSelectedLogicForApi] = useState(null);
+  const [apiValidityByLogic, setApiValidityByLogic] = useState({}); // { [logicId]: true|false|null }
   const [currentPrices, setCurrentPrices] = useState({}); // 현재가 저장
 
   // ROI 계산 함수
@@ -75,15 +77,50 @@ const AssetPage = ({
     return todayPnL;
   };
 
+  const validateLogicApi = async (logicId) => {
+    if (!logicId) return;
+    try {
+      // @ts-ignore
+      if (!window.electronAPI) {
+        setApiValidityByLogic((m) => ({ ...m, [logicId]: null }));
+        return;
+      }
+      // @ts-ignore
+      const saved = await window.electronAPI.loadLogicApiKeys(logicId);
+      if (!saved?.accessKey || !saved?.secretKey) {
+        setApiValidityByLogic((m) => ({ ...m, [logicId]: false }));
+        return;
+      }
+      // @ts-ignore
+      await window.electronAPI.fetchUpbitAccounts(saved.accessKey, saved.secretKey);
+      setApiValidityByLogic((m) => ({ ...m, [logicId]: true }));
+    } catch {
+      setApiValidityByLogic((m) => ({ ...m, [logicId]: false }));
+    }
+  };
+
   useEffect(() => {
-    if (!localStorage.getItem('runningLogic')) {
-      const mockRunningLogic = { id: 'logic-1', name: 'Upbit 단타 거래 로직' };
-      localStorage.setItem('runningLogic', JSON.stringify(mockRunningLogic));
-    }
-    const savedRunningLogic = localStorage.getItem('runningLogic');
-    if (savedRunningLogic) {
-      setRunningLogic(JSON.parse(savedRunningLogic));
-    }
+    (async () => {
+      try {
+        // @ts-ignore
+        if (window.electronAPI && window.electronAPI.getRunningLogic) {
+          // @ts-ignore
+          const saved = await window.electronAPI.getRunningLogic();
+          if (saved) setRunningLogic(saved);
+          else {
+            // 최초 실행 시에는 실행 중인 로직이 없어야 하므로 null로 초기화
+            // persisted 값도 명시적으로 비워 둔다
+            // @ts-ignore
+            if (window.electronAPI && window.electronAPI.setRunningLogic) {
+              // @ts-ignore
+              await window.electronAPI.setRunningLogic(null);
+            }
+            setRunningLogic(null);
+          }
+        }
+      } catch {}
+      setRoi(7.25);
+    })();
   }, []);
 
   // 자산 정보나 현재가가 변경될 때마다 ROI와 P/L 계산
@@ -134,9 +171,13 @@ const AssetPage = ({
     items.splice(result.destination.index, 0, reorderedItem);
     if (onReorderLogics) {
       onReorderLogics(items);
-      localStorage.setItem('userLogics', JSON.stringify(items));
     }
   };
+
+  // 드롭다운을 펼칠 때 해당 로직의 API 상태를 갱신
+  useEffect(() => {
+    if (openedMenuId) validateLogicApi(openedMenuId);
+  }, [openedMenuId]);
 
   // 새 로직 인라인 생성 시작
   const startCreateNewLogic = () => {
@@ -158,10 +199,13 @@ const AssetPage = ({
       cancelCreateNewLogic();
       return;
     }
-    const newId = `logic-${Date.now()}`;
-    const updated = logics.map((l) => (l.id === editingId ? { id: newId, name, data: {} } : l));
+    // 생성은 상위(App)로 위임하여 파일 생성/인덱스 갱신
+    if (typeof onCreateLogic === 'function') {
+      onCreateLogic(name);
+    }
+    // 로컬 UI에서 임시 항목 제거하여 즉시 반영
+    const updated = logics.filter((l) => l.id !== editingId);
     onReorderLogics && onReorderLogics(updated);
-    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };
@@ -171,7 +215,6 @@ const AssetPage = ({
     if (!editingId) return;
     const updated = logics.filter((l) => l.id !== editingId);
     onReorderLogics && onReorderLogics(updated);
-    localStorage.setItem('userLogics', JSON.stringify(updated));
     setEditingId(null);
     setEditingValue('');
   };
@@ -183,14 +226,19 @@ const AssetPage = ({
         <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
           <div className="relative">
             <button
-              onClick={onCloseApiKeySettings}
+              onClick={async () => {
+                const target = selectedLogicForApi;
+                onCloseApiKeySettings && onCloseApiKeySettings();
+                if (target) await validateLogicApi(target);
+                setSelectedLogicForApi(null);
+              }}
               className="absolute -top-2.5 -right-2.5 h-8 w-8 rounded-full bg-neutral-900 text-gray-100 border-2 border-neutral-700 flex items-center justify-center shadow hover:border-cyan-500/40 hover:text-white"
               aria-label="닫기"
               title="닫기"
             >
               ×
             </button>
-            <ApiKeySettings onKeysSaved={onApiKeysSaved} />
+            <ApiKeySettings onKeysSaved={onApiKeysSaved} logicId={selectedLogicForApi || undefined} />
           </div>
         </div>
       )}
@@ -267,31 +315,6 @@ const AssetPage = ({
         <div className="text-sm sm:text-base text-gray-400">
           현재 수익률: <span className="font-semibold text-cyan-400">{roi.toFixed(2)}%</span>
         </div>
-
-        {/* 오버레이 미니 카드 (Status) - 클릭 시 API 키 설정 열기 */}
-        <div
-          className="absolute right-4 top-4 sm:right-6 sm:top-6 backdrop-blur-md bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2 shadow-lg cursor-pointer select-none hover:border-cyan-500/40"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
-            }
-          }}
-          title="API 키 설정 열기"
-          aria-label="API 키 설정 열기"
-        >
-          <div className="text-[12px] uppercase tracking-wide text-gray-400">API SETUP ⚙</div>
-          <div className="flex items-end gap-2">
-            <div className="text-lg font-semibold text-gray-100">Active</div>
-            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.6)]"></span>
-          </div>
-        </div>
       </div>
       {/* 추후 협업 때 추가할만한 내용: API 키가 valid 상태일때는 Active로, invalid 상태일때는 Inactive로 표시해주기 */}
 
@@ -327,7 +350,7 @@ const AssetPage = ({
                 logics.map((logic, index) => (
                   // wrapper: 외곽 윤곽선은 ring으로 강조하고, 내부 경계선 색은 유지
                   <div key={logic.id} className="flex flex-col group rounded-xl ring-1 ring-transparent hover:ring-cyan-500/40 transition-shadow">
-                    <Draggable draggableId={logic.id} index={index}>
+                    <Draggable draggableId={logic.id} index={index} isDragDisabled={logic.id === editingId}>
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
@@ -401,6 +424,60 @@ const AssetPage = ({
                           >
                             실행하기 // 실행기능 임시로 뺌 
                           </button> */} 
+                          {/* 실행/정지 토글 */}
+                          {runningLogic?.id === logic.id ? (
+                            <button
+                              className="px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-500 border border-red-500/40"
+                              onClick={async () => {
+                                try {
+                                  // @ts-ignore
+                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
+                                    // @ts-ignore
+                                    await window.electronAPI.setRunningLogic(null);
+                                  }
+                                } catch {}
+                                setRunningLogic(null);
+                              }}
+                            >
+                              정지하기
+                            </button>
+                          ) : (
+                            <button
+                              className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
+                              onClick={async () => {
+                                const meta = { id: logic.id, name: logic.name };
+                                try {
+                                  // @ts-ignore
+                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
+                                    // @ts-ignore
+                                    await window.electronAPI.setRunningLogic(meta);
+                                  }
+                                } catch {}
+                                setRunningLogic(meta);
+                              }}
+                            >
+                              실행하기
+                            </button>
+                          )}
+                          <button
+                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white flex items-center gap-2"
+                            onClick={() => {
+                              setSelectedLogicForApi(logic.id);
+                              if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
+                            }}
+                          >
+                            <span>API 설정</span>
+                            {(() => {
+                              const st = apiValidityByLogic[logic.id];
+                              const cls = st === true
+                                ? 'bg-cyan-400 shadow-[0_0_10px_2px_rgba(34,211,238,0.5)]'
+                                : st === false
+                                  ? 'bg-red-400 shadow-[0_0_10px_2px_rgba(248,113,113,0.5)]'
+                                  : 'bg-neutral-500';
+                              return <span className={`inline-flex h-2.5 w-2.5 rounded-full ${cls}`}></span>;
+                            })()}
+                          </button>
+                          {/* 수정하기 버튼을 삭제하기 왼쪽으로 이동 */}
                           <button
                             className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white"
                             onClick={() => {

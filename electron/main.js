@@ -2,6 +2,17 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchRLProcess, stopRLProcess } from './rl_launcher.js';
+import Store from 'electron-store';
+import {
+  listLogics as ls_listLogics,
+  createLogic as ls_createLogic,
+  loadLogic as ls_loadLogic,
+  saveLogic as ls_saveLogic,
+  deleteLogic as ls_deleteLogic,
+  reorderLogics as ls_reorderLogics,
+  loadLogicApiKeys as ls_loadLogicApiKeys,
+  saveLogicApiKeys as ls_saveLogicApiKeys,
+} from './logicStore.js';
 import {
   saveApiKeys,
   loadApiKeys,
@@ -17,6 +28,8 @@ import {
   limitSellWithKRW,
   sellAll
 } from './upbit_api_manager.js';
+
+const store = new Store({encryptionKey: 'trade-builder-encryption-key-2024'});
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -78,6 +91,71 @@ ipcMain.handle('RL:stop', () => {
   stopRLProcess();
 });
 
+// ---------------- Preferences / App state via electron-store ----------------
+ipcMain.handle('prefs:getTheme', async () => {
+  try {
+    return store.get('ui.theme') || 'dark';
+  } catch {
+    return 'dark';
+  }
+});
+
+ipcMain.handle('prefs:setTheme', async (event, theme) => {
+  try {
+    store.set('ui.theme', theme === 'light' ? 'light' : 'dark');
+    return true;
+  } catch (e) { console.error('prefs:setTheme failed', e); throw e; }
+});
+
+ipcMain.handle('app:getRunningLogic', async () => {
+  try {
+    return store.get('app.runningLogic') || null;
+  } catch { return null; }
+});
+
+ipcMain.handle('app:setRunningLogic', async (event, logicMeta) => {
+  try {
+    // logicMeta: {id,name}
+    store.set('app.runningLogic', logicMeta || null);
+    return true;
+  } catch (e) { console.error('app:setRunningLogic failed', e); throw e; }
+});
+
+// ---------------- Logic persistence (modularized, async, per-logic files) ----------------
+// 인덱스(요약 목록) 조회
+ipcMain.handle('logics:list', async () => {
+  try { return await ls_listLogics(); } catch (e) { console.error('logics:list failed', e); return []; }
+});
+// 새 로직 생성 (파일 생성 + 인덱스 갱신)
+ipcMain.handle('logics:create', async (event, name) => {
+  try { return await ls_createLogic(name); } catch (e) { console.error('logics:create failed', e); throw e; }
+});
+// 특정 로직 본문 로드
+ipcMain.handle('logics:load', async (event, id) => {
+  try { return await ls_loadLogic(id); } catch (e) { console.error('logics:load failed', e); throw e; }
+});
+// 특정 로직 저장
+ipcMain.handle('logics:save', async (event, logic) => {
+  try { return await ls_saveLogic(logic); } catch (e) { console.error('logics:save failed', e); throw e; }
+});
+// 삭제
+ipcMain.handle('logics:delete', async (event, id) => {
+  try { return await ls_deleteLogic(id); } catch (e) { console.error('logics:delete failed', e); throw e; }
+});
+// 순서 재배치
+ipcMain.handle('logics:reorder', async (event, ids) => {
+  try { return await ls_reorderLogics(ids); } catch (e) { console.error('logics:reorder failed', e); throw e; }
+});
+
+// // ---------------- API keys ----------------
+ipcMain.handle('logics:loadKeys', async (event, id) => {
+  try { return await ls_loadLogicApiKeys(id); } catch (e) { console.error('logics:loadKeys failed', e); return null; }
+});
+ipcMain.handle('logics:saveKeys', async (event, id, accessKey, secretKey) => {
+  try { return await ls_saveLogicApiKeys(id, accessKey, secretKey); } catch (e) { console.error('logics:saveKeys failed', e); throw e; }
+});
+
+// ---------------- Upbit API ----------------
 // IPC: Upbit 캔들 데이터 조회
 ipcMain.handle('upbit:fetchCandles', async (event, market, period = 1, count = 200) => {
   return await fetchCandles(market, period, count);

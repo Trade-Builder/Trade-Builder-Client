@@ -1,6 +1,6 @@
 import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
-import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
+import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, RLSignalAST} from "./ast";
 import {APIManager} from "./api_manager";
 
 let dummydata = [1];
@@ -175,13 +175,15 @@ class Interpreter {
         const node = nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(this.dataManager, tryParseInt(node.controls.value));
+                return new ConstantAST(tryParseInt(node.controls.value));
             case "currentPrice":
                 return new CurrentPriceAST(this.dataManager);
             case "highestPrice":
                 return new HighestPriceAST(this.dataManager, tryParseInt(node.controls.periodLength), node.controls.periodUnit);
             case "rsi":
                 return new RsiAST(this.dataManager);
+            case "rl":
+                return new RLSignalAST();
             case "sma":
                 const val = tryParseInt(node.controls.period);
                 if (val > 200) {
@@ -273,11 +275,11 @@ class Interpreter {
         this.log = logFunc;
     }
 
-    private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
-        const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
-        const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
-        return [targetLogic.stock, targetLogic.data];
-    }
+    // private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
+    //     const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
+    //     const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
+    //     return [targetLogic.stock, targetLogic.data];
+    // }
 }
 
 class OrderData {

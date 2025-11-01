@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
 import { getMyAssetsWithKeys } from './communicator/upbit_api';
+import { runLogic } from './logic_interpreter/interpreter';
 
 // ----------------------------------------------------------------
 // App: 페이지 라우팅을 담당하는 메인 컴포넌트
@@ -10,10 +11,12 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('asset'); // 'asset' or 'editor'
   const [selectedLogicId, setSelectedLogicId] = useState(null);
   const [newLogicName, setNewLogicName] = useState('');
+  // logics는 요약 메타만 보관: {id,name,stock?,order}
   const [logics, setLogics] = useState([]);
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(true);
   const [assetsError, setAssetsError] = useState(null);
+  const [runAllInBackground, setRunAllInBackground] = useState(true);
 
   // API 키 관련 상태
   const [hasApiKeys, setHasApiKeys] = useState(false);
@@ -24,28 +27,38 @@ const App = () => {
 
   // 데이터 로딩 및 초기화
   useEffect(() => {
-    // 초기 테마 설정: localStorage > 시스템 선호
-    try {
-      const saved = localStorage.getItem('theme');
-      if (saved === 'light' || saved === 'dark') {
-        setTheme(saved);
-      } else {
-        const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(preferDark ? 'dark' : 'light');
-      }
-    } catch {}
+    // 초기 테마 설정: Electron Store > 시스템 선호
+    (async () => {
+      try {
+        // @ts-ignore
+        if (window.electronAPI && window.electronAPI.getTheme) {
+          // @ts-ignore
+          const saved = await window.electronAPI.getTheme();
+          if (saved === 'light' || saved === 'dark') {
+            setTheme(saved);
+          } else {
+            const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(preferDark ? 'dark' : 'light');
+          }
+        }
+      } catch {}
+    })();
 
     // --- 데모를 위한 기본 데이터 생성 ---
-    if (!localStorage.getItem('userLogics')) {
-      const mockLogics = [
-        { id: 'logic-1', name: 'Upbit 단타 거래 로직', data: {} },
-        { id: 'logic-2', name: '삼성 자동 투자', data: {} },
-        { id: 'logic-3', name: 'S&P 500 장기 우상향 주식 투자', data: {} },
-      ];
-      localStorage.setItem('userLogics', JSON.stringify(mockLogics));
-    }
-    const savedLogics = JSON.parse(localStorage.getItem('userLogics') || '[]');
-    setLogics(savedLogics);
+    const bootstrapLogics = async () => {
+      try {
+        // @ts-ignore
+        if (!window.electronAPI || !window.electronAPI.listLogics) {
+          console.error('Electron API가 필요합니다.');
+          setLogics([]);
+          return;
+        }
+        // @ts-ignore
+        const index = await window.electronAPI.listLogics();
+        setLogics(index || []);
+      } catch (e) {}
+    };
+    bootstrapLogics();
 
     const loadKeysAndFetchAssets = async () => {
       try {
@@ -93,11 +106,30 @@ const App = () => {
     loadKeysAndFetchAssets();
   }, []);
 
-  // 테마를 documentElement에 반영
+  // 모든 로직을 백그라운드 루틴으로 실행 (간단한 타이머 기반)
+  useEffect(() => {
+    if (!runAllInBackground) return;
+    const id = setInterval(() => {
+      try {
+        logics.forEach((l) => {
+          if (!l?.data?.buyGraph || !l?.data?.sellGraph) return;
+          // 간단히 콘솔에만 로그 남김
+          runLogic(l.stock ?? '', { buyGraph: l.data.buyGraph, sellGraph: l.data.sellGraph }, () => {}, false);
+        });
+      } catch {}
+    }, 30000); // 30초마다 실행
+    return () => clearInterval(id);
+  }, [runAllInBackground, logics]);
+
+  // 테마를 documentElement에 반영 + Electron Store에 저장
   useEffect(() => {
     try {
       document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
+      // @ts-ignore
+      if (window.electronAPI && window.electronAPI.setTheme) {
+        // @ts-ignore
+        window.electronAPI.setTheme(theme);
+      }
     } catch {}
   }, [theme]);
 
@@ -118,22 +150,32 @@ const App = () => {
     setNewLogicName('');
   };
     
-  const handleSaveLogic = (updatedLogic) => {
-    const newLogics = [...logics];
-    const index = newLogics.findIndex(l => l.id === updatedLogic.id);
-    if (index > -1) {
-      newLogics[index] = updatedLogic; // 기존 로직 업데이트
-    } else {
-      newLogics.push(updatedLogic); // 새 로직 추가
-    }
-    setLogics(newLogics);
-    localStorage.setItem('userLogics', JSON.stringify(newLogics));
+  const handleSaveLogic = async (updatedLogic) => {
+    try {
+      // @ts-ignore
+      if (!window.electronAPI || !window.electronAPI.saveLogic) return;
+      // @ts-ignore
+      await window.electronAPI.saveLogic(updatedLogic);
+      // 전체 재조회 없이 국소 업데이트로 메타 반영 (이름/종목 등)
+      setLogics((prev) =>
+        prev.map((l) =>
+          l.id === updatedLogic.id
+            ? { ...l, name: updatedLogic.name || l.name, stock: updatedLogic.stock }
+            : l
+        )
+      );
+    } catch {}
   };
 
-  const handleDeleteLogic = (logicIdToDelete) => {
-    const newLogics = logics.filter(logic => logic.id !== logicIdToDelete);
-    setLogics(newLogics);
-    localStorage.setItem('userLogics', JSON.stringify(newLogics));
+  const handleDeleteLogic = async (logicIdToDelete) => {
+    try {
+      // 낙관적 업데이트로 즉시 UI 반영하고, 이후 비동기 저장
+      setLogics((prev)=> prev.filter((l)=> l.id !== logicIdToDelete));
+      // @ts-ignore
+      if (!window.electronAPI || !window.electronAPI.deleteLogic) return;
+      // @ts-ignore
+      await window.electronAPI.deleteLogic(logicIdToDelete);
+    } catch {}
     console.log('로직이 삭제되었습니다.');
   };
 
@@ -227,7 +269,33 @@ const App = () => {
           onLogicClick={handleLogicClick}
           onAddNewLogic={handleAddNewLogic}
           onDeleteLogic={handleDeleteLogic}
-          onReorderLogics={setLogics}
+          onReorderLogics={async (items)=>{
+            // items: [{id,name,stock?,order?, _temp?}]
+            setLogics(items);
+            // 임시 항목이 있으면 저장하지 않음
+            if (items.some((i)=> i && i._temp)) return;
+            try {
+              // @ts-ignore
+              if (window.electronAPI && window.electronAPI.reorderLogics) {
+                const ids = items.map((i)=> i.id);
+                // @ts-ignore
+                await window.electronAPI.reorderLogics(ids);
+              }
+            } catch {}
+          }}
+          onCreateLogic={async (name)=>{
+            try {
+              // @ts-ignore
+              if (window.electronAPI && window.electronAPI.createLogic) {
+                // @ts-ignore
+                const meta = await window.electronAPI.createLogic(name);
+                // 인덱스 전체 재조회 없이 새 항목만 말단에 추가
+                if (meta && meta.id) {
+                  setLogics((prev)=> [...prev, meta]);
+                }
+              }
+            } catch {}
+          }}
           onRefreshAssets={handleRefreshAssets}
           onOpenApiKeySettings={() => setShowApiKeySettings(true)}
           showApiKeySettings={showApiKeySettings}

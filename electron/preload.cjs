@@ -52,6 +52,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   stopRL: () => ipcRenderer.invoke('RL:stop'),
 
+  // 로직 파일 저장/로드 (분리 구조)
+  /**
+   * 로직 요약 목록(인덱스) 조회 [{id,name,stock,order}]
+   */
+  listLogics: () => ipcRenderer.invoke('logics:list'),
+  /**
+   * 새 로직 생성
+   */
+  createLogic: (name) => ipcRenderer.invoke('logics:create', name),
+  /**
+   * 특정 로직 로드
+   */
+  loadLogic: (id) => ipcRenderer.invoke('logics:load', id),
+  /**
+   * 특정 로직 저장
+   */
+  saveLogic: (logic) => ipcRenderer.invoke('logics:save', logic),
+  /**
+   * 특정 로직 삭제
+   */
+  deleteLogic: (id) => ipcRenderer.invoke('logics:delete', id),
+  /**
+   * 로직 순서 재배치
+   */
+  reorderLogics: (ids) => ipcRenderer.invoke('logics:reorder', ids),
+
+  // per-logic API keys
+  loadLogicApiKeys: (id) => ipcRenderer.invoke('logics:loadKeys', id),
+  saveLogicApiKeys: (id, accessKey, secretKey) => ipcRenderer.invoke('logics:saveKeys', id, accessKey, secretKey),
+
+  // 환경설정/앱 상태 (Electron Store)
+  getTheme: () => ipcRenderer.invoke('prefs:getTheme'),
+  setTheme: (theme) => ipcRenderer.invoke('prefs:setTheme', theme),
+  getRunningLogic: () => ipcRenderer.invoke('app:getRunningLogic'),
+  setRunningLogic: (meta) => ipcRenderer.invoke('app:setRunningLogic', meta),
   /**
    * 업비트 통합 주문
    * @param {object} options - 주문 옵션 {market, side, orderType, price, volume}

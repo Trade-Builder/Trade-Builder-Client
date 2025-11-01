@@ -11,20 +11,20 @@
 .background {
   background-color: var(--canvas-bg);
   opacity: 1;
-  /* subtle grid */
+  /* Grid layers: major 80px, minor 16px; colors from theme vars for visibility */
   background-image:
     radial-gradient(ellipse at 20% 0%, rgba(103, 232, 249, 0.06), rgba(0,0,0,0) 60%),
     radial-gradient(ellipse at 80% 0%, rgba(103, 232, 249, 0.04), rgba(0,0,0,0) 60%),
-    linear-gradient(rgba(51,65,85,0.18) 1.6px, transparent 1.6px),
-    linear-gradient(90deg, rgba(51,65,85,0.18) 1.6px, transparent 1.6px),
-    linear-gradient(rgba(71,85,105,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(71,85,105,0.08) 1px, transparent 1px);
+    linear-gradient(var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(var(--grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
   background-size:
     100% 100%, 100% 100%,
     80px 80px, 80px 80px,
     16px 16px, 16px 16px;
   background-position:
     0 0, 0 0,
-    -3.2px -3.2px, -3.2px -3.2px,
-    -1px -1px, -1px -1px;
+    0 0, 0 0,
+    0 0, 0 0;
 }
