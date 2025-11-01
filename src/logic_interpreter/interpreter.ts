@@ -1,6 +1,7 @@
 import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
+import {APIManager} from "./api_manager";
 
 let dummydata = [1];
 function* RLRunningRoutine(log: (title: string, msg: string) => void) {
@@ -30,13 +31,6 @@ function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => vo
     step(iterator.next());
 }
 
-export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
-    //startCoroutine(RLRunningRoutine, logFunc);
-    let interpreter = new Interpreter(stock, logFunc);
-    interpreter.parse(logicData);
-    //setInterval(interpreter.run.bind(interpreter, logRunDetails), 1000);
-    interpreter.run(logRunDetails);
-}
 
 class Interpreter {
     parseComplete: boolean = false;
@@ -44,18 +38,23 @@ class Interpreter {
     buyRoot: AST | null;
     sellRoot: AST | null;
 
+    //order data
     stock: string;
     buyOrderData: OrderData;
     sellOrderData: OrderData;
 
+    // parsing cache
     nodes: Map<string, any>;
     connections: Map<string, string[]>;
 
-    log: (title: string, msg: string) => void;
+    log: null | ((title: string, msg: string) => void);
 
-    constructor(stock: string, logFunc: (title: string, msg: string) => void) {
-        this.stock = stock;
-        this.log = logFunc;
+    dataManager: APIManager;
+
+    constructor() {
+        this.stock = "KRW-BTC";
+        this.log = null;
+        this.dataManager = new APIManager();
 
         this.logicID = null;
         this.buyRoot = null;
@@ -72,7 +71,8 @@ class Interpreter {
         try {
             this.tryParse(data);
         } catch (error: any) {
-            this.log("Error",error.message);
+            if (this.log != null) 
+                this.log("Error", error.message);
             return;
         }
         this.parseComplete = true;
@@ -82,7 +82,7 @@ class Interpreter {
         if (!this.parseComplete) { return; }
         let buyResult: boolean;
         let sellResult: boolean;
-        if (logRunDetails) {
+        if (logRunDetails && this.log != null) {
             buyResult = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
             sellResult = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
         }
@@ -93,12 +93,14 @@ class Interpreter {
         if (buyResult) {
             this.doBuy(this.buyOrderData);
         } else {
-            this.log("Buy", "매수 조건 미충족");
+            if (this.log != null) 
+                this.log("Buy", "매수 조건 미충족");
         }
         if (sellResult) {
             this.doSell(this.sellOrderData);
         } else {
-            this.log("Sell", "매도 조건 미충족");
+            if (this.log != null)
+                this.log("Sell", "매도 조건 미충족");
         }
     }
 
@@ -161,17 +163,21 @@ class Interpreter {
         const node = this.nodes.get(nodeID);
         switch (node.kind) {
             case "const":
-                return new ConstantAST(tryParseInt(node.controls.value));
+                return new ConstantAST(this.dataManager, tryParseInt(node.controls.value));
             case "currentPrice":
-                return new CurrentPriceAST();
+                return new CurrentPriceAST(this.dataManager);
             case "highestPrice":
-                return new HighestPriceAST(tryParseInt(node.controls.periodLength), String(node.controls.periodUnit ?? 'day'));
+                return new HighestPriceAST(this.dataManager, tryParseInt(node.controls.periodLength), node.controls.periodUnit);
             case "rsi":
-                return new RsiAST();
+                return new RsiAST(this.dataManager);
             case "sma":
-                return new SmaAST(tryParseInt(node.controls.period));
+                const val = tryParseInt(node.controls.period);
+                if (val > 200) {
+                    throw new Error("SMA 기간은 최대 200까지 설정할 수 있습니다.");
+                }
+                return new SmaAST(this.dataManager, val);
             case "roi":
-                return new RoiAST();
+                return new RoiAST(this.dataManager);
             case "logicOp": {
                 const children = this.connections.get(nodeID);
                 if (children === undefined) {
@@ -205,7 +211,8 @@ class Interpreter {
         else {
             msg = `지정가 ${orderData.limitPrice}$에 자산의 ${orderData.sellPercent}% 매수`;
         }
-        this.log("Buy", msg);
+        if (this.log != null) 
+            this.log("Buy", msg);
     }
 
     private doSell(orderData: OrderData) {
@@ -216,7 +223,16 @@ class Interpreter {
         else {
             msg = `지정가 ${orderData.limitPrice}$에 자산의 ${orderData.sellPercent}% 매도`;
         }
-        this.log("Sell", msg);
+        if (this.log != null)
+             this.log("Sell", msg);
+    }
+
+    public setStock(stock: string) {
+        this.stock = stock;
+    }
+
+    public setLogfunc(logFunc: (title: string, msg: string) => void) {
+        this.log = logFunc;
     }
 
     private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
@@ -249,4 +265,16 @@ function tryParseInt(v: any): number {
         throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
     }
     return parseInt(v);
+}
+
+const interpreter = new Interpreter();
+
+export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
+    //startCoroutine(RLRunningRoutine, logFunc);
+    interpreter.setStock(stock);
+    interpreter.setLogfunc(logFunc);
+    interpreter.parse(logicData);
+    setTimeout(() => {
+        interpreter.run(logRunDetails);
+    }, 500);
 }

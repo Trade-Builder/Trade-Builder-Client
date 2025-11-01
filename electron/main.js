@@ -4,17 +4,9 @@ import { fileURLToPath } from 'node:url';
 import Store from 'electron-store';
 import { launchRLProcess, stopRLProcess } from './rl_launcher.js';
 import {
-  getCandleData,
-  getAllCandleData,
-  getLatestCandle,
-  getCandleRange,
-  startCandleUpdates,
-  stopCandleUpdates,
   fetchUpbitAccounts,
-  fetch1mCandles,
-  fetchAndFormat1mCandles,
   fetchCandles,
-  fetchAndFormatCandles,
+  getHighestPrice,
   placeOrder,
   marketBuy,
   marketSell,
@@ -55,17 +47,15 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow();
-  await startCandleUpdates('KRW-BTC');
 });
 
 app.on('window-all-closed', function () {
     app.quit();
 });
 
-// 앱 종료 시 RL 프로세스 및 캔들 데이터 업데이트 종료
+// 앱 종료 시 RL 프로세스 종료
 app.on('before-quit', () => {
    stopRLProcess();
-   stopCandleUpdates();
 });
 
 // IPC: API 키 저장
@@ -115,54 +105,14 @@ ipcMain.handle('RL:stop', () => {
   stopRLProcess();
 });
 
-// IPC: Upbit 1분봉 데이터 조회 (하위 호환성)
-ipcMain.handle('upbit:fetch1mCandles', async (event, market, count = 200) => {
-  return await fetch1mCandles(market, count);
+// IPC: Upbit 캔들 데이터 조회
+ipcMain.handle('upbit:fetchCandles', async (event, market, period = 1, count = 200) => {
+  return await fetchCandles(market, period, count);
 });
 
-// IPC: Upbit 캔들 데이터 조회 (시간 간격 선택 가능)
-ipcMain.handle('upbit:fetchCandles', async (event, market, interval = 1, count = 200) => {
-  return await fetchCandles(market, interval, count);
-});
-
-// IPC: Upbit 1분봉 데이터 가져와서 바로 저장 (하위 호환성)
-ipcMain.handle('upbit:fetchAndSave1mCandles', async (event, market, count = 200) => {
-  return await fetchAndFormat1mCandles(market, count);
-});
-
-// IPC: Upbit 캔들 데이터 가져와서 배열로 저장 (시간 간격 선택 가능)
-ipcMain.handle('upbit:fetchAndSaveCandles', async (event, market, interval = 1, count = 200) => {
-  return await fetchAndFormatCandles(market, interval, count);
-});
-
-// IPC: 캔들 데이터 자동 업데이트 시작 (시간 간격 선택 가능)
-ipcMain.handle('upbit:startCandleUpdates', async (event, market, interval = 1) => {
-  return await startCandleUpdates(market, interval);
-});
-
-// IPC: 캔들 데이터 자동 업데이트 중지 (특정 interval 또는 전체)
-ipcMain.handle('upbit:stopCandleUpdates', (event, interval = null) => {
-  return stopCandleUpdates(interval);
-});
-
-// IPC: 메모리에서 캔들 데이터 가져오기 (특정 interval)
-ipcMain.handle('candle:getData', (event, interval = 1) => {
-  return getCandleData(interval);
-});
-
-// IPC: 모든 시간 간격의 캔들 데이터 가져오기
-ipcMain.handle('candle:getAllData', () => {
-  return getAllCandleData();
-});
-
-// IPC: 최신 캔들 데이터 가져오기 (특정 interval)
-ipcMain.handle('candle:getLatest', (event, interval = 1) => {
-  return getLatestCandle(interval);
-});
-
-// IPC: 특정 범위의 데이터 가져오기
-ipcMain.handle('candle:getRange', (event, interval, start, end) => {
-  return getCandleRange(interval, start, end);
+// IPC: Upbit 최고가 조회
+ipcMain.handle('upbit:getHighestPrice', async (event, market, periodUnit, period) => {
+  return await getHighestPrice(market, periodUnit, period);
 });
 
 // IPC: 통합 주문
