@@ -75,12 +75,12 @@ export class RLNode extends TradeNode {
     constructor() {
         super('AI 노드')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '신호'))
-        // 추후: 모델/마켓 등 설정 추가 가능
-        this.addControl('model', new ClassicPreset.InputControl('text', { initial: 'default' as any }))
+        // 기간 단위 설정만 제공 (minute|hour|day|month|year)
+        this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'rl'
         this.category = 'supplier'
         this._controlHints = {
-            model: { label: '모델', title: '사용할 RL 모델 이름 (데모)' }
+            periodUnit: { label: '기간 단위', title: '기간 단위 (minute/hour/day/month/year)' }
         }
     }
 }
@@ -102,13 +102,13 @@ export class HighestPriceNode extends TradeNode {
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '최고가'))
         // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
         this.addControl('periodLength', new ClassicPreset.InputControl('text', { initial: 1 as any }))
-        // periodUnit: dropdown (day|week|month) - 내부 값은 text control을 유지하고 UI는 나중에 select로 교체
+        // periodUnit: dropdown (minute|hour|day|month|year) - 내부 값은 text control을 유지하고 UI는 나중에 select로 교체
         this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'highestPrice'
         this.category = 'supplier'
         this._controlHints = {
-            periodLength: { label: '기간 길이', title: '최고가 계산에 사용할 기간 길이 (정수)' },
-            periodUnit: { label: '단위', title: '기간 단위 (day/week/month)' }
+            periodLength: { label: '기간', title: '최고가 계산에 사용할 기간 길이 (정수)' },
+            periodUnit: { label: '단위', title: '기간 단위 (minute/hour/day/month/year)' }
         }
     }
 }
@@ -131,10 +131,12 @@ export class SMANode extends TradeNode {
         this.addOutput('value', new ClassicPreset.Output(numberSocket, 'SMA'))
         // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
         this.addControl('period', new ClassicPreset.InputControl('text', { initial: 20 as any }))
+        this.addControl('periodUnit', new ClassicPreset.InputControl('text', { initial: 'day' }))
         this.kind = 'sma'
         this.category = 'supplier'
         this._controlHints = {
-            period: { label: '기간', title: '단순 이동평균 계산 기간 (일 수)' }
+            period: { label: '기간', title: '단순 이동평균 계산 기간' },
+            periodUnit: { label: '단위', title: '기간 단위 (minute/hour/day/month/year)' }
         }
     }
 }

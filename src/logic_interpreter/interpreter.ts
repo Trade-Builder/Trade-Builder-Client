@@ -168,9 +168,9 @@ class Interpreter {
             case "rsi":
                 return new RsiAST();
             case "rl":
-                return new RLSignalAST(String(node.controls.model ?? 'default'));
+                return new RLSignalAST(String(node.controls.periodUnit ?? 'day'));
             case "sma":
-                return new SmaAST(tryParseInt(node.controls.period));
+                return new SmaAST(tryParseInt(node.controls.period), String(node.controls.periodUnit ?? 'day'));
             case "roi":
                 return new RoiAST();
             case "logicOp": {

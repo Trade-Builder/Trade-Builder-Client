@@ -79,7 +79,18 @@ export async function saveLogic(logic) {
   if (!logic || !logic.id) throw new Error('Invalid logic');
   await ensureBaseDir();
   const file = logicFile(logic.id);
-  const toSave = { id: logic.id, name: logic.name || 'Untitled', stock: logic.stock, data: logic.data || {} };
+  // 기존 파일이 있으면 apiKeys 등 보존
+  let prev = {};
+  if (fs.existsSync(file)) {
+    try { prev = JSON.parse(await fsp.readFile(file, 'utf-8')); } catch {}
+  }
+  const toSave = {
+    id: logic.id,
+    name: logic.name || 'Untitled',
+    stock: logic.stock,
+    data: logic.data || {},
+    apiKeys: logic.apiKeys || prev.apiKeys || undefined,
+  };
   await fsp.writeFile(file, JSON.stringify(toSave, null, 2), 'utf-8');
   // update index meta if name/stock changed or ensure exists
   const idx = await readIndex();
@@ -121,5 +132,27 @@ export async function reorderLogics(ids) {
     if (!ids.includes(m.id)) ordered.push({ ...m, order: ordered.length });
   });
   await writeIndex(ordered);
+  return true;
+}
+
+// ---------------- Per-logic API Keys helpers ----------------
+export async function loadLogicApiKeys(id) {
+  const obj = await loadLogic(id);
+  if (!obj) return null;
+  const keys = obj.apiKeys;
+  if (keys && keys.accessKey && keys.secretKey) return keys;
+  return null;
+}
+
+export async function saveLogicApiKeys(id, accessKey, secretKey) {
+  if (!id) throw new Error('Invalid id');
+  await ensureBaseDir();
+  const file = logicFile(id);
+  let obj = { id, name: 'Untitled', data: {} };
+  if (fs.existsSync(file)) {
+    try { obj = JSON.parse(await fsp.readFile(file, 'utf-8')); } catch {}
+  }
+  obj.apiKeys = { accessKey, secretKey };
+  await fsp.writeFile(file, JSON.stringify(obj, null, 2), 'utf-8');
   return true;
 }

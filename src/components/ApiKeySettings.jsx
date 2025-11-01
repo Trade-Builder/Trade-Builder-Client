@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
  * - Upbit Access Key와 Secret Key를 입력받아 암호화 저장
  * - 저장된 키로 자동으로 자산 정보를 불러옴
  */
-const ApiKeySettings = ({ onKeysSaved }) => {
+const ApiKeySettings = ({ onKeysSaved, logicId }) => {
   const [accessKey, setAccessKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -14,14 +14,21 @@ const ApiKeySettings = ({ onKeysSaved }) => {
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
   const [isValid, setIsValid] = useState(null); // null | true | false
 
-  // 저장된 키 프리필 + 최초 유효성 검사
+  // 저장된 키 프리필 + 최초 유효성 검사 (로직별 또는 전역)
   useEffect(() => {
     (async () => {
       try {
         // @ts-ignore
         if (!window.electronAPI) return;
+        let saved = null;
         // @ts-ignore
-        const saved = await window.electronAPI.loadApiKeys();
+        if (logicId && window.electronAPI.loadLogicApiKeys) {
+          // @ts-ignore
+          saved = await window.electronAPI.loadLogicApiKeys(logicId);
+        } else {
+          // @ts-ignore
+          saved = await window.electronAPI.loadApiKeys();
+        }
         if (saved && saved.accessKey && saved.secretKey) {
           setAccessKey(saved.accessKey);
           setSecretKey(saved.secretKey);
@@ -31,7 +38,7 @@ const ApiKeySettings = ({ onKeysSaved }) => {
         // ignore
       }
     })();
-  }, []);
+  }, [logicId]);
 
   const validateKeys = async (aKey = accessKey, sKey = secretKey) => {
     if (!aKey?.trim() || !sKey?.trim()) {
@@ -75,10 +82,14 @@ const ApiKeySettings = ({ onKeysSaved }) => {
       if (!window.electronAPI) {
         throw new Error('Electron 환경에서만 사용 가능합니다.');
       }
-
-  // API 키 저장
-  // @ts-ignore
-  await window.electronAPI.saveApiKeys(accessKey, secretKey);
+      // API 키 저장 (로직별 또는 전역)
+      if (logicId && window.electronAPI.saveLogicApiKeys) {
+        // @ts-ignore
+        await window.electronAPI.saveLogicApiKeys(logicId, accessKey, secretKey);
+      } else {
+        // @ts-ignore
+        await window.electronAPI.saveApiKeys(accessKey, secretKey);
+      }
 
       setMessage('API 키가 안전하게 저장되었습니다!');
       setMessageType('success');
@@ -88,7 +99,7 @@ const ApiKeySettings = ({ onKeysSaved }) => {
 
       // 부모 컴포넌트에 저장 완료 알림 (자산 정보 갱신용)
       if (onKeysSaved) {
-        onKeysSaved(accessKey, secretKey);
+        onKeysSaved(accessKey, secretKey, logicId || null);
       }
 
       // 입력값 유지 요청이 있어 보안을 크게 해치지 않는 선에서 프리필 유지

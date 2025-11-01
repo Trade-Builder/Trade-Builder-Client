@@ -60,6 +60,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   reorderLogics: (ids) => ipcRenderer.invoke('logics:reorder', ids),
 
+  // per-logic API keys
+  loadLogicApiKeys: (id) => ipcRenderer.invoke('logics:loadKeys', id),
+  saveLogicApiKeys: (id, accessKey, secretKey) => ipcRenderer.invoke('logics:saveKeys', id, accessKey, secretKey),
+
   // 환경설정/앱 상태 (Electron Store)
   getTheme: () => ipcRenderer.invoke('prefs:getTheme'),
   setTheme: (theme) => ipcRenderer.invoke('prefs:setTheme', theme),

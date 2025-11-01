@@ -14,6 +14,8 @@ import {
   saveLogic as ls_saveLogic,
   deleteLogic as ls_deleteLogic,
   reorderLogics as ls_reorderLogics,
+  loadLogicApiKeys as ls_loadLogicApiKeys,
+  saveLogicApiKeys as ls_saveLogicApiKeys,
 } from './logicStore.js';
 
 // __dirname 대체 (ESM 환경)
@@ -184,4 +186,12 @@ ipcMain.handle('logics:delete', async (event, id) => {
 // 순서 재배치
 ipcMain.handle('logics:reorder', async (event, ids) => {
   try { return await ls_reorderLogics(ids); } catch (e) { console.error('logics:reorder failed', e); throw e; }
+});
+
+// per-logic api keys
+ipcMain.handle('logics:loadKeys', async (event, id) => {
+  try { return await ls_loadLogicApiKeys(id); } catch (e) { console.error('logics:loadKeys failed', e); return null; }
+});
+ipcMain.handle('logics:saveKeys', async (event, id, accessKey, secretKey) => {
+  try { return await ls_saveLogicApiKeys(id, accessKey, secretKey); } catch (e) { console.error('logics:saveKeys failed', e); throw e; }
 });

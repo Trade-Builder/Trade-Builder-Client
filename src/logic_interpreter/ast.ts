@@ -114,9 +114,11 @@ export class RoiAST implements AST {
 
 export class SmaAST implements AST {
     period: number;
+    periodUnit: string;
 
-    constructor(period: number) {
+    constructor(period: number, periodUnit: string) {
         this.period = period;
+        this.periodUnit = periodUnit;
     }
 
     calcValue() {
@@ -129,16 +131,16 @@ export class SmaAST implements AST {
 
     evaluateDetailed(log: (msg: string) => void) {
         const value = this.calcValue();
-        log(`SMA value: ${value.toFixed(2)}`);
+        log(`SMA(${this.period}${this.periodUnit}) value: ${value.toFixed(2)}`);
         return value;
     }
 }
 
 // 간단한 RL 신호 (데모용)
 export class RLSignalAST implements AST {
-    model: string;
-    constructor(model: string = 'default') {
-        this.model = model;
+    periodUnit: string;
+    constructor(periodUnit: string = 'day') {
+        this.periodUnit = periodUnit;
     }
     calcValue() {
         // 데모: -1 ~ 1 사이 신호 값
@@ -149,7 +151,7 @@ export class RLSignalAST implements AST {
     }
     evaluateDetailed(log: (msg: string) => void) {
         const v = this.calcValue();
-        log(`RL(${this.model}) signal: ${v.toFixed(3)}`);
+        log(`RL(unit=${this.periodUnit}) signal: ${v.toFixed(3)}`);
         return v;
     }
 }

@@ -22,6 +22,7 @@ const AssetPage = ({
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
   const [apiValid, setApiValid] = useState(null); // null|true|false
+  const [selectedLogicForApi, setSelectedLogicForApi] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -43,14 +44,15 @@ const AssetPage = ({
     })();
   }, []);
 
-  // API 키 유효성 검사 -> 상태 배지에 반영
+  // API 키 유효성 검사 -> 상태 배지에 반영 (전역이 아닌, 실행중인 로직 파일의 키를 사용)
   useEffect(() => {
     const validate = async () => {
       try {
         // @ts-ignore
         if (!window.electronAPI) { setApiValid(null); return; }
+        if (!runningLogic?.id) { setApiValid(null); return; }
         // @ts-ignore
-        const saved = await window.electronAPI.loadApiKeys();
+        const saved = await window.electronAPI.loadLogicApiKeys(runningLogic.id);
         if (!saved?.accessKey || !saved?.secretKey) { setApiValid(false); return; }
         // @ts-ignore
         await window.electronAPI.fetchUpbitAccounts(saved.accessKey, saved.secretKey);
@@ -60,7 +62,7 @@ const AssetPage = ({
       }
     };
     validate();
-  }, [showApiKeySettings]);
+  }, [showApiKeySettings, runningLogic]);
 
   // 드래그 앤 드롭 순서 변경 핸들러
   const handleDragEnd = (result) => {
@@ -120,14 +122,14 @@ const AssetPage = ({
         <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
           <div className="relative">
             <button
-              onClick={onCloseApiKeySettings}
+              onClick={() => { setSelectedLogicForApi(null); onCloseApiKeySettings && onCloseApiKeySettings(); }}
               className="absolute -top-2.5 -right-2.5 h-8 w-8 rounded-full bg-neutral-900 text-gray-100 border-2 border-neutral-700 flex items-center justify-center shadow hover:border-cyan-500/40 hover:text-white"
               aria-label="닫기"
               title="닫기"
             >
               ×
             </button>
-            <ApiKeySettings onKeysSaved={onApiKeysSaved} />
+            <ApiKeySettings onKeysSaved={onApiKeysSaved} logicId={selectedLogicForApi || undefined} />
           </div>
         </div>
       )}
@@ -154,6 +156,8 @@ const AssetPage = ({
           className="absolute right-4 top-4 sm:right-6 sm:top-6 backdrop-blur-md bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2 shadow-lg cursor-pointer select-none hover:border-cyan-500/40"
           onClick={(e) => {
             e.stopPropagation();
+            if (!runningLogic?.id) return; // 실행중인 로직이 없으면 열지 않음
+            setSelectedLogicForApi(runningLogic.id); // 실행중인 로직 설정 모달
             if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
           }}
           role="button"
@@ -161,6 +165,8 @@ const AssetPage = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
+              if (!runningLogic?.id) return;
+              setSelectedLogicForApi(runningLogic.id);
               if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
             }
           }}
@@ -306,6 +312,16 @@ const AssetPage = ({
                             }}
                           >
                             수정하기
+                          </button>
+                          <button
+                            className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white"
+                            onClick={() => {
+                              setOpenedMenuId(null);
+                              setSelectedLogicForApi(logic.id);
+                              if (typeof onOpenApiKeySettings === 'function') onOpenApiKeySettings();
+                            }}
+                          >
+                            API 설정
                           </button>
                           <button
                             className="px-3 py-1 rounded text-sm text-red-400 bg-neutral-800 border border-neutral-700 hover:bg-red-500/10 hover:text-red-300"
