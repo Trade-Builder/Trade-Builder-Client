@@ -40,7 +40,7 @@
     --accent: #22d3ee; /* cyan-400 */
     --accent-weak: rgba(34, 211, 238, 0.25);
 
-    --node-bg-start: #0b0f14;
+    --node-bg-start: #0d1013;
     --node-bg-end: #0a0e12;
     --node-border: #1f2937;
     --title-color: #e5e7eb;
@@ -57,7 +57,7 @@
 
     --conn-stroke: #67e8f9; /* cyan-300 */
 
-    --canvas-bg: #0a0f14;
+    --canvas-bg: #17212c75;
 
     color-scheme: dark;
 
