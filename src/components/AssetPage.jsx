@@ -55,10 +55,14 @@ const AssetPage = ({
           const saved = await window.electronAPI.getRunningLogic();
           if (saved) setRunningLogic(saved);
           else {
-            const mockRunningLogic = { id: 'logic-1', name: 'Upbit 단타 거래 로직' };
+            // 최초 실행 시에는 실행 중인 로직이 없어야 하므로 null로 초기화
+            // persisted 값도 명시적으로 비워 둔다
             // @ts-ignore
-            if (window.electronAPI.setRunningLogic) await window.electronAPI.setRunningLogic(mockRunningLogic);
-            setRunningLogic(mockRunningLogic);
+            if (window.electronAPI && window.electronAPI.setRunningLogic) {
+              // @ts-ignore
+              await window.electronAPI.setRunningLogic(null);
+            }
+            setRunningLogic(null);
           }
         }
       } catch {}
