@@ -273,7 +273,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     // Optional: add subtle dark grid background to the area
     try {
         addCustomBackground(area as any)
-    } catch { }
+    } catch {}
 
     // --- 더블클릭 확대 비활성화: 기본 d3/zoom 유사 동작 차단 ---
     // 캔버스 컨테이너에서 발생하는 dblclick을 막아 확대 트리거를 방지한다.
@@ -323,7 +323,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                         return con
                     }
                 }
-            } catch { }
+            } catch {}
             return originalAddConnection(con)
         }
 
@@ -391,10 +391,10 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                 for (const c of cons) {
                     try {
                         await (editor as any).removeConnection(c.id)
-                    } catch { }
+                    } catch {}
                 }
                 await (editor as any).removeNode((currentNode as any).id)
-            } catch { }
+            } catch {}
         }
         closeMenu()
     })
@@ -571,7 +571,7 @@ export function exportGraph(editor: any, area: any): SerializedGraph {
             const { k, x, y } = area.area.transform
             viewport = { k, x, y }
         }
-    } catch { }
+    } catch {}
 
     return { nodes, connections, viewport }
 }
@@ -631,14 +631,14 @@ export async function importGraph(editor: any, area: any, graph: SerializedGraph
             if (typeof x === 'number') area.area.transform.x = x
             if (typeof y === 'number') area.area.transform.y = y
             if (typeof area.area.update === 'function') area.area.update()
-        } catch { }
+        } catch {}
     }
 
     if (typeof (editor as any).reteUiEnhance === 'function') {
         requestAnimationFrame(() => {
             try {
                 ; (editor as any).reteUiEnhance()
-            } catch { }
+            } catch {}
         })
     }
 }
@@ -649,10 +649,10 @@ export async function removeNodeWithConnections(editor: any, nodeId: string): Pr
     for (const c of cons) {
         try {
             await (editor as any).removeConnection(c.id)
-        } catch { }
+        } catch {}
     }
     try {
         await (editor as any).removeNode(nodeId)
-    } catch { }
+    } catch {}
 }
 
