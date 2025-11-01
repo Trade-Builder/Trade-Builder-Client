@@ -277,7 +277,7 @@ export async function limitSell(accessKey, secretKey, market, price, volume) {
 }
 
 /**
- * 현재가 조회
+ * 현재가 조회 (단일 마켓)
  * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
  */
 export async function getCurrentPrice(market) {
@@ -297,6 +297,46 @@ export async function getCurrentPrice(market) {
   } catch (error) {
     const errorMessage = error.response ? error.response.data : error.message;
     console.error('[현재가 조회 실패]', errorMessage);
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+/**
+ * 현재가 일괄 조회 (여러 마켓 동시 조회)
+ * @param {string[]} markets - 마켓 코드 배열 (예: ['KRW-BTC', 'KRW-ETH'])
+ * @returns {Promise<{success: boolean, data?: Object, error?: any}>}
+ */
+export async function getCurrentPrices(markets) {
+  try {
+    if (!markets || markets.length === 0) {
+      return {
+        success: true,
+        data: {}
+      };
+    }
+
+    const API_ENDPOINT = `https://api.upbit.com/v1/ticker`;
+    const params = { markets: markets.join(',') };
+
+    const response = await axios.get(API_ENDPOINT, { params });
+
+    // { 'KRW-BTC': 50000000, 'KRW-ETH': 3000000 } 형태로 변환
+    const priceMap = {};
+    response.data.forEach(ticker => {
+      priceMap[ticker.market] = ticker.trade_price;
+    });
+
+    console.log(`[현재가 일괄 조회] ${markets.length}개 마켓 조회 완료`);
+    return {
+      success: true,
+      data: priceMap
+    };
+  } catch (error) {
+    const errorMessage = error.response ? error.response.data : error.message;
+    console.error('[현재가 일괄 조회 실패]', errorMessage);
     return {
       success: false,
       error: errorMessage

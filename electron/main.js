@@ -13,11 +13,12 @@ import {
   limitBuy,
   limitSell,
   getCurrentPrice,
+  getCurrentPrices,
   buyAtCurrentPrice,
   sellAtCurrentPrice,
   limitBuyWithKRW,
   sellAll
-} from './upbit_api_manager.js';
+} from './upbit_api_manager_optimized.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -140,9 +141,14 @@ ipcMain.handle('upbit:limitSell', async (event, accessKey, secretKey, market, pr
   return await limitSell(accessKey, secretKey, market, price, volume);
 });
 
-// IPC: 현재가 조회
+// IPC: 현재가 조회 (단일 마켓)
 ipcMain.handle('upbit:getCurrentPrice', async (event, market) => {
   return await getCurrentPrice(market);
+});
+
+// IPC: 현재가 일괄 조회 (여러 마켓)
+ipcMain.handle('upbit:getCurrentPrices', async (event, markets) => {
+  return await getCurrentPrices(markets);
 });
 
 // IPC: 현재가로 지정가 매수

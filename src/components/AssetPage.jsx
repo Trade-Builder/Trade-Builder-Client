@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ApiKeySettings from './ApiKeySettings';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { getCurrentPrices } from '../communicator/upbit_api';
 
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지
@@ -22,9 +23,57 @@ const AssetPage = ({
 }) => {
   const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
+  const [todayPnL, setTodayPnL] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
+  const [currentPrices, setCurrentPrices] = useState({}); // 현재가 저장
+
+  // ROI 계산 함수
+  const calculateROI = () => {
+    if (!assets || assets.length === 0) return 0;
+
+    let totalInitialInvestment = 0;
+    let totalCurrentValue = 0;
+
+    assets.forEach(asset => {
+      if (asset.currency === 'KRW') return; // 원화는 제외
+
+      const balance = parseFloat(asset.balance) || 0;
+      const avgBuyPrice = parseFloat(asset.avg_buy_price) || 0;
+      const market = `KRW-${asset.currency}`;
+      const currentPrice = currentPrices[market] || avgBuyPrice;
+
+      totalInitialInvestment += balance * avgBuyPrice;
+      totalCurrentValue += balance * currentPrice;
+    });
+
+    if (totalInitialInvestment === 0) return 0;
+    return ((totalCurrentValue - totalInitialInvestment) / totalInitialInvestment) * 100;
+  };
+
+  // 오늘의 손익(P/L) 계산 함수
+  const calculateTodayPnL = () => {
+    if (!assets || assets.length === 0) return 0;
+
+    let todayPnL = 0;
+
+    assets.forEach(asset => {
+      if (asset.currency === 'KRW') return; // 원화는 제외
+
+      const balance = parseFloat(asset.balance) || 0;
+      const market = `KRW-${asset.currency}`;
+      const currentPrice = currentPrices[market];
+      const todayOpenPrice = currentPrices[`${market}_open`];
+
+      if (currentPrice && todayOpenPrice) {
+        // 보유 수량 * (현재가 - 오늘시가)
+        todayPnL += balance * (currentPrice - todayOpenPrice);
+      }
+    });
+
+    return todayPnL;
+  };
 
   useEffect(() => {
     if (!localStorage.getItem('runningLogic')) {
@@ -35,8 +84,47 @@ const AssetPage = ({
     if (savedRunningLogic) {
       setRunningLogic(JSON.parse(savedRunningLogic));
     }
-    setRoi(7.25);
   }, []);
+
+  // 자산 정보나 현재가가 변경될 때마다 ROI와 P/L 계산
+  useEffect(() => {
+    const newRoi = calculateROI();
+    const newPnL = calculateTodayPnL();
+    setRoi(newRoi);
+    setTodayPnL(newPnL);
+  }, [assets, currentPrices]);
+
+  // 자산 정보가 변경될 때마다 현재가 조회
+  useEffect(() => {
+    const fetchCurrentPrices = async () => {
+      if (!assets || assets.length === 0) {
+        setCurrentPrices({});
+        return;
+      }
+
+      try {
+        // KRW가 아닌 암호화폐만 필터링하여 마켓 코드 생성
+        const markets = assets
+          .filter(asset => asset.currency !== 'KRW')
+          .map(asset => `KRW-${asset.currency}`);
+
+        if (markets.length === 0) {
+          setCurrentPrices({});
+          return;
+        }
+
+        // 현재가 일괄 조회
+        const prices = await getCurrentPrices(markets);
+        setCurrentPrices(prices);
+        console.log('현재가 조회 완료:', prices);
+      } catch (error) {
+        console.error('현재가 조회 실패:', error);
+        setCurrentPrices({});
+      }
+    };
+
+    fetchCurrentPrices();
+  }, [assets]);
 
   // 드래그 앤 드롭 순서 변경 핸들러
   const handleDragEnd = (result) => {
@@ -117,6 +205,62 @@ const AssetPage = ({
             ))}
           </div> // 탭 기능 임시로 뺌*/}
         </div>
+
+        {/* 자산 정보 표시 */}
+        <div className="mb-1 text-sm sm:text-base text-gray-400">
+          총 자산: {' '}
+          {assetsLoading ? (
+            <span className="text-gray-400">로딩 중...</span>
+          ) : assetsError ? (
+            <span className="text-red-400" title={assetsError}>오류 발생</span>
+          ) : assets && assets.length > 0 ? (
+            <span className="font-semibold text-cyan-400">
+              {assets
+                .reduce((total, asset) => {
+                  const balance = parseFloat(asset.balance) || 0;
+                  const locked = parseFloat(asset.locked) || 0;
+                  const totalAmount = balance + locked;
+
+                  // KRW는 그대로 더함
+                  if (asset.currency === 'KRW') {
+                    return total + totalAmount;
+                  }
+
+                  // 암호화폐는 현재가로 계산
+                  const market = `KRW-${asset.currency}`;
+                  const currentPrice = currentPrices[market];
+
+                  // 현재가가 있으면 현재가 사용, 없으면 평균 매수가 사용 (fallback)
+                  const price = currentPrice !== undefined
+                    ? currentPrice
+                    : parseFloat(asset.avg_buy_price) || 0;
+
+                  return total + (totalAmount * price);
+                }, 0)
+                .toLocaleString('ko-KR', { maximumFractionDigits: 0 })} KRW
+              {Object.keys(currentPrices).length > 0 && (
+                <span className="ml-1 text-xs text-gray-500" title="현재가 기준 평가액">
+                  (실시간)
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-gray-400">자산 정보 없음</span>
+          )}
+          {!assetsLoading && onRefreshAssets && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRefreshAssets();
+              }}
+              className="ml-2 text-xs px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:border-cyan-500/40 hover:text-cyan-400 transition"
+              title="자산 정보 새로고침"
+            >
+              🔄
+            </button>
+          )}
+        </div>
+
         <div className="mb-1 text-sm sm:text-base text-gray-400">
           실행중인 로직: <span className="font-medium text-cyan-400">{runningLogic ? runningLogic.name : '없음'}</span>
         </div>
@@ -160,7 +304,7 @@ const AssetPage = ({
         },{
           title:'누적 ROI', value: `${roi.toFixed(2)}%`
         },{
-          title:'오늘 P/L', value: `${(roi/100*1000).toFixed(0)}$`
+          title:'오늘 P/L', value: `₩${Math.abs(todayPnL) < 0.01 ? 0 : todayPnL.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}`
         }].map((s,idx)=> (
           <div key={idx} className="p-5 rounded-2xl bg-neutral-900/70 border border-neutral-800/70 hover:border-cyan-500/40 transition">
             <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">{s.title}</div>
