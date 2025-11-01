@@ -312,7 +312,13 @@ export function CustomNode<Scheme extends ClassicScheme>(props: Props<Scheme>) {
               if (key === 'orderType') return ['market', 'limit'];
               break;
             case 'HighestPrice':
-              if (key === 'periodUnit') return ['day', 'week', 'month', 'year'];
+              if (key === 'periodUnit') return ['minute', 'hour', 'day', 'month', 'year'];
+              break;
+            case 'SMA':
+              if (key === 'periodUnit') return ['minute', 'hour', 'day', 'month', 'year'];
+              break;
+            case 'AI 노드':
+              if (key === 'periodUnit') return ['minute', 'hour', 'day', 'month', 'year'];
               break;
             case 'Compare':
               if (key === 'operator') return ['>', '≥', '=', '<', '≤', '≠'];

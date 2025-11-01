@@ -321,14 +321,14 @@ export async function getCurrentPrices(markets) {
       priceMap[`${ticker.market}_open`] = ticker.opening_price;
     });
 
-    console.log(`[현재가 일괄 조회] ${markets.length}개 마켓 조회 완료`);
+    // console.log(`[현재가 일괄 조회] ${markets.length}개 마켓 조회 완료`);
     return {
       success: true,
       data: priceMap
     };
   } catch (error) {
     const errorMessage = error.response ? error.response.data : error.message;
-    console.error('[현재가 일괄 조회 실패]', errorMessage);
+    // console.error('[현재가 일괄 조회 실패]', errorMessage);
     return {
       success: false,
       error: errorMessage

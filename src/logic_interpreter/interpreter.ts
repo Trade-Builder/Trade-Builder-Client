@@ -1,6 +1,6 @@
 import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
-import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, MarketBuyAST, MarketSellAST, LimitBuyAST, LimitSellAST, LimitBuyWithKRWAST, SellAllAST} from "./ast";
+import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, RLSignalAST, MarketBuyAST, MarketSellAST, LimitBuyAST, LimitSellAST, LimitBuyWithKRWAST, SellAllAST} from "./ast";
 import {APIManager} from "./api_manager";
 
 let dummydata = [1];
@@ -79,13 +79,13 @@ class Interpreter {
         this.parseComplete = true;
     }
 
-    public run(logDetails: boolean) {
+    public async run(logDetails: boolean) {
         if (!this.parseComplete) { return; }
-        // this.runBuy(logDetails);
-        this.runSell(logDetails);
+        await this.runBuy(logDetails);
+        await this.runSell(logDetails);
     }
 
-    public runBuy(logDetails: boolean) {
+    public async runBuy(logDetails: boolean) {
         let result: boolean;
         if (logDetails && this.log != null) {
             result = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
@@ -94,13 +94,13 @@ class Interpreter {
             result = this.buyRoot!.evaluate() as boolean;
         }
         if (result) {
-            this.doBuy();
+            await this.doBuy();
         } else if (this.log != null) {
             this.log("Buy", "매수 조건 미충족");
         }
     }
 
-    public runSell(logDetails: boolean) {
+    public async runSell(logDetails: boolean) {
         let result: boolean;
         if (logDetails && this.log != null) {
             result = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
@@ -109,7 +109,7 @@ class Interpreter {
             result = this.sellRoot!.evaluate() as boolean;
         }
         if (result) {
-            this.doSell();
+            await this.doSell();
         } else if (this.log != null) {
             this.log("Sell", "매도 조건 미충족");
         }
@@ -181,12 +181,14 @@ class Interpreter {
                 return new HighestPriceAST(this.dataManager, tryParseInt(node.controls.periodLength), node.controls.periodUnit);
             case "rsi":
                 return new RsiAST(this.dataManager);
+            case "rl":
+                return new RLSignalAST(String(node.controls.periodUnit ?? 'day'));
             case "sma":
                 const val = tryParseInt(node.controls.period);
                 if (val > 200) {
                     throw new Error("SMA 기간은 최대 200까지 설정할 수 있습니다.");
                 }
-                return new SmaAST(this.dataManager, val);
+                return new SmaAST(this.dataManager, val, String(node.controls.periodUnit ?? 'minute'));
             case "roi":
                 return new RoiAST(this.dataManager);
             case "logicOp": {
@@ -298,17 +300,39 @@ class Interpreter {
     }
 
     private async doSell() {
-        let msg = '';
-        if (this.sellOrderData.orderType === 'market') {
-            await window.electronAPI.marketSell(this.stock, this.sellOrderData.quantity);
-            msg = `시장가 ${this.sellOrderData.quantity}원어치 매도`;
+        try {
+            // 계좌 정보 조회
+            const accounts = await window.electronAPI.fetchUpbitAccounts();
+
+            // 선택된 stock에서 화폐 추출 (예: 'KRW-BTC' -> 'BTC')
+            const currency = this.stock.split('-')[1];
+            const cryptoAccount = accounts.find((acc: any) => acc.currency === currency);
+
+            if (!cryptoAccount || parseFloat(cryptoAccount.balance) === 0) {
+                if (this.log != null)
+                    this.log("Sell", `${currency} 보유량이 없습니다.`);
+                return;
+            }
+
+            const availableVolume = parseFloat(cryptoAccount.balance);
+            const sellPercent = this.sellOrderData.sellPercent;
+            const sellVolume = availableVolume * (sellPercent / 100);
+
+            if (sellVolume <= 0) {
+                if (this.log != null)
+                    this.log("Sell", `매도 수량이 너무 적습니다 (${sellVolume})`);
+                return;
+            }
+
+            await window.electronAPI.marketSell(this.stock, sellVolume);
+            const msg = `시장가 ${sellVolume.toFixed(8)} ${currency} 매도 (보유량 ${availableVolume.toFixed(8)}의 ${sellPercent}%)`;
+
+            if (this.log != null)
+                this.log("Sell", msg);
+        } catch (error: any) {
+            if (this.log != null)
+                this.log("Sell", `매도 실패: ${error.message}`);
         }
-        else {
-            await window.electronAPI.limitSellWithKRW(this.stock, this.sellOrderData.limitPrice, this.sellOrderData.quantity);
-            msg = `지정가 ${this.sellOrderData.limitPrice}$에 ${this.sellOrderData.quantity}원어치 매도`;
-        }
-        if (this.log != null)
-             this.log("Sell", msg);
     }
 
     public setStock(stock: string) {
@@ -332,12 +356,14 @@ class OrderData {
     limitPrice: number;
     quantity: number;
     buyPercent: number;
+    sellPercent: number;
 
     constructor() {
         this.orderType = "";
         this.limitPrice = 0;
         this.quantity = 0;
         this.buyPercent = 100;
+        this.sellPercent = 100;
     }
 
     init(data: any) {
@@ -345,11 +371,15 @@ class OrderData {
         if (data.buyPercent !== undefined) {
             this.buyPercent = parseFloat(data.buyPercent) || 100;
         }
-        // Sell 노드용 (기존 로직 유지)
+        // Sell 노드용 (percentage-based)
+        if (data.sellPercent !== undefined) {
+            this.sellPercent = parseFloat(data.sellPercent) || 100;
+        }
+        // Legacy: 기존 orderType 기반 로직 (하위호환)
         if (data.orderType !== undefined) {
             this.orderType = data.orderType;
             this.limitPrice = data.limitPrice;
-            this.quantity = data.sellPercent;
+            this.quantity = data.quantity || data.sellPercent;
         }
     }
 }
@@ -375,7 +405,7 @@ export function runLogic(stock: string, logicData: any, logFunc: (title: string,
     interpreter.setStock(stock);
     interpreter.setLogfunc(logFunc);
     interpreter.parse(logicData);
-    setTimeout(() => {
-        interpreter.run(logDetails);
+    setTimeout(async () => {
+        await interpreter.run(logDetails);
     }, 500);
 }

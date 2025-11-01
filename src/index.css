@@ -27,6 +27,10 @@
 
     --canvas-bg: #0a0f14;
 
+    /* canvas grid (defaults) */
+    --grid-major: rgba(71, 85, 105, 0.22); /* slate-600 @22% */
+    --grid-minor: rgba(51, 65, 85, 0.14); /* slate-700 @14% */
+
     color-scheme: dark;
 }
 
@@ -40,7 +44,7 @@
     --accent: #22d3ee; /* cyan-400 */
     --accent-weak: rgba(34, 211, 238, 0.25);
 
-    --node-bg-start: #0b0f14;
+    --node-bg-start: #0d1013;
     --node-bg-end: #0a0e12;
     --node-border: #1f2937;
     --title-color: #e5e7eb;
@@ -57,7 +61,11 @@
 
     --conn-stroke: #67e8f9; /* cyan-300 */
 
-    --canvas-bg: #0a0f14;
+    --canvas-bg: #111827; /* dark neutral base for better contrast */
+
+    /* stronger grid visibility for dark */
+    --grid-major: rgba(97, 106, 120, 0.26); /* slate-400 @26% */
+    --grid-minor: rgba(47, 77, 116, 0.14); /* slate-500 @14% */
 
     color-scheme: dark;
 
@@ -93,6 +101,10 @@
     --conn-stroke: #06b6d4; /* cyan-500 */
 
     --canvas-bg: #f5f7fb;
+
+    /* softer grid for light */
+    --grid-major: rgba(0, 0, 0, 0.12);
+    --grid-minor: rgba(0, 0, 0, 0.06);
 
     color-scheme: light;
 
@@ -177,3 +189,16 @@ html, body {
 }
 
 /* Buttons or focus rings using cyan accents should respect --accent; some utilities will pick it via inline styles already. */
+
+/* Toast animations */
+@keyframes toastIn {
+    0% { transform: translateY(12px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes toastOut {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-6px); opacity: 0; }
+}
+.toast-slide-in {
+    animation: toastIn 180ms ease-out;
+}

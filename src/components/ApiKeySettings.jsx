@@ -1,16 +1,66 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 /**
  * API 키 설정 컴포넌트
  * - Upbit Access Key와 Secret Key를 입력받아 암호화 저장
  * - 저장된 키로 자동으로 자산 정보를 불러옴
  */
-const ApiKeySettings = ({ onKeysSaved }) => {
+const ApiKeySettings = ({ onKeysSaved, logicId }) => {
   const [accessKey, setAccessKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+  const [isValid, setIsValid] = useState(null); // null | true | false
+
+  // 저장된 키 프리필 + 최초 유효성 검사 (로직별 또는 전역)
+  useEffect(() => {
+    (async () => {
+      try {
+        // @ts-ignore
+        if (!window.electronAPI) return;
+        let saved = null;
+        // @ts-ignore
+        if (logicId && window.electronAPI.loadLogicApiKeys) {
+          // @ts-ignore
+          saved = await window.electronAPI.loadLogicApiKeys(logicId);
+        } else {
+          // @ts-ignore
+          saved = await window.electronAPI.loadApiKeys();
+        }
+        if (saved && saved.accessKey && saved.secretKey) {
+          setAccessKey(saved.accessKey);
+          setSecretKey(saved.secretKey);
+          await validateKeys(saved.accessKey, saved.secretKey);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, [logicId]);
+
+  const validateKeys = async (aKey = accessKey, sKey = secretKey) => {
+    if (!aKey?.trim() || !sKey?.trim()) {
+      setIsValid(false);
+      return false;
+    }
+    try {
+      setValidating(true);
+      setMessage('');
+      // @ts-ignore
+      if (!window.electronAPI) throw new Error('Electron 환경에서만 사용 가능합니다.');
+      // @ts-ignore
+      await window.electronAPI.fetchUpbitAccounts(aKey, sKey);
+      setIsValid(true);
+      return true;
+    } catch (e) {
+      setIsValid(false);
+      return false;
+    } finally {
+      setValidating(false);
+    }
+  };
 
   /**
    * API 키 저장 핸들러
@@ -32,22 +82,27 @@ const ApiKeySettings = ({ onKeysSaved }) => {
       if (!window.electronAPI) {
         throw new Error('Electron 환경에서만 사용 가능합니다.');
       }
-
-      // API 키 저장
-      // @ts-ignore
-      await window.electronAPI.saveApiKeys(accessKey, secretKey);
+      // API 키 저장 (로직별 또는 전역)
+      if (logicId && window.electronAPI.saveLogicApiKeys) {
+        // @ts-ignore
+        await window.electronAPI.saveLogicApiKeys(logicId, accessKey, secretKey);
+      } else {
+        // @ts-ignore
+        await window.electronAPI.saveApiKeys(accessKey, secretKey);
+      }
 
       setMessage('API 키가 안전하게 저장되었습니다!');
       setMessageType('success');
 
+  // 저장 후 유효성 재검사
+  await validateKeys(accessKey, secretKey);
+
       // 부모 컴포넌트에 저장 완료 알림 (자산 정보 갱신용)
       if (onKeysSaved) {
-        onKeysSaved(accessKey, secretKey);
+        onKeysSaved(accessKey, secretKey, logicId || null);
       }
 
-      // 입력 필드 초기화 (보안상)
-      setAccessKey('');
-      setSecretKey('');
+      // 입력값 유지 요청이 있어 보안을 크게 해치지 않는 선에서 프리필 유지
     } catch (error) {
       console.error('API 키 저장 실패:', error);
       setMessage('API 키 저장에 실패했습니다: ' + error.message);
@@ -62,6 +117,26 @@ const ApiKeySettings = ({ onKeysSaved }) => {
       <h2 className="text-xl font-bold mb-5 text-gray-100 flex items-center gap-2">
         ⚙️ Upbit API 키 설정
       </h2>
+
+      {/* 상태 배지 */}
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        <span className="text-gray-400">상태:</span>
+        {isValid === null && (
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-neutral-700 bg-neutral-800 text-gray-300">Unknown</span>
+        )}
+        {isValid === true && (
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-cyan-600/40 bg-cyan-500/10 text-cyan-300">
+            <span className="inline-block h-2 w-2 rounded-full bg-cyan-400"></span>
+            Active
+          </span>
+        )}
+        {isValid === false && (
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded border border-red-600/40 bg-red-500/10 text-red-300">
+            <span className="inline-block h-2 w-2 rounded-full bg-red-400"></span>
+            Inactive
+          </span>
+        )}
+      </div>
 
       <div className="mb-4">
         <label className="block mb-2 text-sm font-semibold text-gray-400">Access Key</label>
@@ -87,13 +162,22 @@ const ApiKeySettings = ({ onKeysSaved }) => {
         />
       </div>
 
-      <button
-        onClick={handleSaveKeys}
-        disabled={isLoading}
-        className={`w-full py-3 mt-1 rounded-md font-bold text-white transition-colors border border-transparent shadow-sm ${isLoading ? 'bg-neutral-700 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500'}`}
-      >
-        {isLoading ? '저장 중...' : '키 저장하기'}
-      </button>
+      <div className="flex gap-2 mt-1">
+        <button
+          onClick={handleSaveKeys}
+          disabled={isLoading}
+          className={`flex-1 py-3 rounded-md font-bold text-white transition-colors border border-transparent shadow-sm ${isLoading ? 'bg-neutral-700 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500'}`}
+        >
+          {isLoading ? '저장 중...' : '저장하기'}
+        </button>
+        <button
+          onClick={() => validateKeys()}
+          disabled={validating}
+          className={`w-[140px] py-3 rounded-md font-bold text-gray-100 transition-colors border border-neutral-700 shadow-sm ${validating ? 'bg-neutral-800 cursor-not-allowed' : 'bg-neutral-900 hover:bg-neutral-800'}`}
+        >
+          {validating ? '확인 중…' : '새로고침'}
+        </button>
+      </div>
 
       {message && (
         <div
