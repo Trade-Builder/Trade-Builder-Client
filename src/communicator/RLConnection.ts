@@ -23,8 +23,7 @@ export class RLConnection {
 
 		socket.onmessage = (event: MessageEvent) => {
 			const raw = event.data;
-			const parsed = JSON.parse(raw);
-			this.log("Info",parsed.result.action);
+			console.log(raw);
 		};
 		return socket;
 	}
@@ -35,8 +34,9 @@ export class RLConnection {
 			return;
 		}
 		try {
-			this.socket.send(JSON.stringify(data));
-			console.log(`${data.index} ${data.data}`);
+			let txt = JSON.stringify(data);
+			this.socket.send(txt);
+			console.log(txt);
 		} catch (err) {
 			this.log("Error","RL: Failed to send message: " + err);
 		}
