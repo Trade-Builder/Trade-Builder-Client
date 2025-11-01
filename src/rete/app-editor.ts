@@ -12,6 +12,10 @@ import { CustomConnection } from '../customization/CustomConnection'
 import { addCustomBackground } from '../customization/custom-background'
 import '../customization/background.css'
 
+// 전역(모듈) 공유 클립보드: Buy/Sell 등 서로 다른 캔버스 인스턴스 간에도
+// 복사한 서브그래프를 붙여넣을 수 있도록 모듈 레벨 변수로 유지한다.
+export let sharedClipboard: SerializedGraph | null = null
+
 // -------------------- 타입 선언/유틸 --------------------
 export type NodeKind =
     'stock'
@@ -411,9 +415,8 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     })
 
     // -------------------- 마퀴(드래그 사각형) 선택 & 복사/붙여넣기 --------------------
-    // 상태: 선택된 노드 집합 및 클립보드
+    // 상태: 선택된 노드 집합 및 (메뉴 위치, 전역 클립보드는 모듈 변수 사용)
     const selectedNodeIds = new Set<string>()
-    let clipboard: SerializedGraph | null = null
     let lastContextPosClient: { x: number; y: number } | null = null
 
     // --- Undo/Redo 히스토리 ---
@@ -650,19 +653,20 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         const idSet = new Set(Array.from(selectedNodeIds))
         const nodes = (full.nodes || []).filter(n => idSet.has(n.id))
         const connections = (full.connections || []).filter(c => idSet.has(c.source) && idSet.has(c.target))
-        clipboard = { nodes, connections, viewport: undefined }
+        // 전역 클립보드에 저장해 다른 에디터에서도 접근 가능하게 한다
+        sharedClipboard = { nodes, connections, viewport: undefined }
         closeMenu()
     }
 
     // 붙여넣기: 빈 공간을 기준으로 상대 위치를 유지하여 노드 생성 후 연결 복원
     async function handlePaste(clientX: number, clientY: number) {
-        if (!clipboard || !clipboard.nodes?.length) return
+        if (!sharedClipboard || !sharedClipboard.nodes?.length) return
         const world = clientToWorld(area, container, clientX, clientY)
-        const minX = Math.min(...clipboard.nodes.map(n => n.position?.x ?? 0))
-        const minY = Math.min(...clipboard.nodes.map(n => n.position?.y ?? 0))
+        const minX = Math.min(...sharedClipboard.nodes.map(n => n.position?.x ?? 0))
+        const minY = Math.min(...sharedClipboard.nodes.map(n => n.position?.y ?? 0))
         const map = new Map<string, TradeNode>()
         // 1) 노드 생성
-        for (const n of clipboard.nodes) {
+        for (const n of sharedClipboard.nodes) {
             try {
                 const kind = n.kind || labelToKind(n.label) || 'const'
                 const node = createNodeByKind(kind as NodeKind)
@@ -683,7 +687,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             } catch { /* noop */ }
         }
         // 2) 연결 생성
-        for (const c of (clipboard.connections || [])) {
+        for (const c of (sharedClipboard.connections || [])) {
             const source = map.get(c.source)
             const target = map.get(c.target)
             if (source && target) {
@@ -712,7 +716,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         lastContextPosClient = { x: e.clientX, y: e.clientY }
         const node = findNodeAt(e.clientX, e.clientY)
         const hasSelection = selectedNodeIds.size > 0
-        const hasClipboard = !!(clipboard && clipboard.nodes && clipboard.nodes.length)
+        const hasClipboard = !!(sharedClipboard && sharedClipboard.nodes && sharedClipboard.nodes.length)
         if (node) {
             // 노드 위: 삭제 + (선택 존재 시) 복사
             rebuildMenuButtons({ allowDelete: true, allowCopy: hasSelection, allowPaste: false })
@@ -728,6 +732,29 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         }
     })
 
+    // 키보드 복사/붙여넣기 지원 (전역 클립보드 기반)
+    const onKeyCopyPaste = (e: KeyboardEvent) => {
+        const key = String(e.key || '').toLowerCase()
+        const ctrl = e.ctrlKey || e.metaKey
+        if (!ctrl) return
+        if (key === 'c') {
+            if (selectedNodeIds.size) {
+                e.preventDefault(); e.stopPropagation(); void handleCopy()
+            }
+        } else if (key === 'v') {
+            const hasClipboard = !!(sharedClipboard && sharedClipboard.nodes && sharedClipboard.nodes.length)
+            if (hasClipboard) {
+                e.preventDefault(); e.stopPropagation()
+                const rect = container.getBoundingClientRect()
+                const cx = rect.left + rect.width / 2
+                const cy = rect.top + rect.height / 2
+                const pos = lastContextPosClient || { x: cx, y: cy }
+                void handlePaste(pos.x, pos.y)
+            }
+        }
+    }
+    window.addEventListener('keydown', onKeyCopyPaste, true)
+
     return {
         editor,
         area,
@@ -740,6 +767,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             marquee.remove()
                 ; (area as any).destroy()
             window.removeEventListener('keydown', onKeyUndoRedo, true)
+            window.removeEventListener('keydown', onKeyCopyPaste, true)
         }
     }
 }
