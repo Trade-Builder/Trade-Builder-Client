@@ -258,7 +258,17 @@ export function stopCandleUpdates(interval = null) {
       clearInterval(updateIntervals[interval]);
       delete updateIntervals[interval];
       const market = activeMappings[interval];
-      console.log(`[중지] ${market} ${interval}분봉 자동 업데이트 중지됨`);
+
+      // 메모리 누수 방지: 데이터도 함께 정리
+      if (candleDataStore[interval]) {
+        candleDataStore[interval].timestamps.clear();
+        candleDataStore[interval].closingPrices.clear();
+        candleDataStore[interval].volumes.clear();
+        delete candleDataStore[interval];
+      }
+      delete activeMappings[interval];
+
+      console.log(`[중지] ${market} ${interval}분봉 자동 업데이트 및 데이터 정리 완료`);
       return {
         success: true,
         message: `${interval}분봉 자동 업데이트 중지됨`,
@@ -276,24 +286,67 @@ export function stopCandleUpdates(interval = null) {
     for (const int in updateIntervals) {
       clearInterval(updateIntervals[int]);
       const market = activeMappings[int];
-      console.log(`[중지] ${market} ${int}분봉 자동 업데이트 중지됨`);
+
+      // 메모리 누수 방지: 데이터도 함께 정리
+      if (candleDataStore[int]) {
+        candleDataStore[int].timestamps.clear();
+        candleDataStore[int].closingPrices.clear();
+        candleDataStore[int].volumes.clear();
+        delete candleDataStore[int];
+      }
+
+      console.log(`[중지] ${market} ${int}분봉 자동 업데이트 및 데이터 정리 완료`);
       stoppedCount++;
     }
 
-    // updateIntervals 초기화
+    // updateIntervals 및 activeMappings 초기화
     for (const key in updateIntervals) {
       delete updateIntervals[key];
+    }
+    for (const key in activeMappings) {
+      delete activeMappings[key];
     }
 
     if (stoppedCount > 0) {
       return {
         success: true,
-        message: `${stoppedCount}개의 자동 업데이트가 중지됨`,
+        message: `${stoppedCount}개의 자동 업데이트가 중지되고 데이터가 정리됨`,
         stoppedCount: stoppedCount
       };
     }
     return { success: false, message: '실행 중인 업데이트가 없습니다' };
   }
+}
+
+/**
+ * 특정 interval의 캔들 데이터만 정리 (업데이트는 유지)
+ * @param {number} interval - 정리할 시간 간격
+ */
+export function clearCandleData(interval) {
+  if (candleDataStore[interval]) {
+    candleDataStore[interval].timestamps.clear();
+    candleDataStore[interval].closingPrices.clear();
+    candleDataStore[interval].volumes.clear();
+    console.log(`[데이터 정리] ${interval}분봉 데이터 정리 완료`);
+    return { success: true, message: `${interval}분봉 데이터 정리 완료` };
+  }
+  return { success: false, message: `${interval}분봉 데이터가 없습니다` };
+}
+
+/**
+ * 모든 캔들 데이터 정리 (업데이트는 유지)
+ */
+export function clearAllCandleData() {
+  let clearedCount = 0;
+  for (const interval in candleDataStore) {
+    candleDataStore[interval].timestamps.clear();
+    candleDataStore[interval].closingPrices.clear();
+    candleDataStore[interval].volumes.clear();
+    delete candleDataStore[interval];
+    clearedCount++;
+  }
+  console.log(`[데이터 정리] ${clearedCount}개 interval의 캔들 데이터 정리 완료`);
+  return { success: true, message: `${clearedCount}개 interval의 데이터 정리 완료`, clearedCount };
 }
 
 /**

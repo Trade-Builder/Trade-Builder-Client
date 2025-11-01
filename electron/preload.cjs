@@ -176,12 +176,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('upbit:limitSell', accessKey, secretKey, market, price, volume),
 
   /**
-   * 현재가 조회
+   * 현재가 조회 (단일 마켓)
    * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
    * @returns {Promise<{success: boolean, price?: number, data?: any, error?: any}>}
    */
   getCurrentPrice: (market) =>
     ipcRenderer.invoke('upbit:getCurrentPrice', market),
+
+  /**
+   * 현재가 일괄 조회 (여러 마켓 동시 조회)
+   * @param {string[]} markets - 마켓 코드 배열 (예: ['KRW-BTC', 'KRW-ETH'])
+   * @returns {Promise<{success: boolean, data?: {[market: string]: number}, error?: any}>}
+   */
+  getCurrentPrices: (markets) =>
+    ipcRenderer.invoke('upbit:getCurrentPrices', markets),
 
   /**
    * 현재가로 지정가 매수

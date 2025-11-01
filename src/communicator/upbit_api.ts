@@ -8,6 +8,13 @@ interface UpbitAccount {
   unit_currency: string;
 }
 
+// Upbit Ticker 응답 인터페이스
+interface UpbitTicker {
+  market: string;
+  trade_price: number;
+  [key: string]: any;
+}
+
 /**
  * preload.js를 통해 Electron의 Main 프로세스에게 업비트 계좌 정보 조회를 요청합니다.
  * @param accessKey - 사용자가 입력한 Access Key
@@ -29,6 +36,39 @@ export const getMyAssetsWithKeys = async (accessKey: string, secretKey: string):
     }
   } catch (error) {
     console.error("자산을 가져오는 데 실패했습니다 (Renderer):", error);
+    throw error;
+  }
+};
+
+/**
+ * Upbit 현재가 조회 (여러 마켓 동시 조회 가능)
+ * @param markets - 마켓 코드 배열 (예: ['KRW-BTC', 'KRW-ETH'])
+ * @returns 현재가 정보 객체 { 'KRW-BTC': 50000000, 'KRW-ETH': 3000000 }
+ */
+export const getCurrentPrices = async (markets: string[]): Promise<Record<string, number>> => {
+  try {
+    // @ts-ignore
+    if (!window.electronAPI) {
+      throw new Error('Electron 환경에서만 사용 가능합니다.');
+    }
+
+    // markets가 빈 배열이면 빈 객체 반환
+    if (markets.length === 0) {
+      return {};
+    }
+
+    // Electron Main Process를 통해 현재가 조회
+    // @ts-ignore
+    const result = await window.electronAPI.getCurrentPrices(markets);
+
+    if (!result.success) {
+      throw new Error(result.error || '현재가 조회 실패');
+    }
+
+    // { 'KRW-BTC': 50000000, 'KRW-ETH': 3000000 } 형태로 반환
+    return result.data || {};
+  } catch (error) {
+    console.error('현재가 조회 실패:', error);
     throw error;
   }
 };
