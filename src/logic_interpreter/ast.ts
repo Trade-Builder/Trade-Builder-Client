@@ -4,8 +4,8 @@ import { APIManager } from './api_manager';
 const ta = new IndicatorsSync();
 
 export interface AST {
-    evaluate(): number | boolean;
-    evaluateDetailed(log: (msg: string) => void): number | boolean;
+    evaluate(): number | boolean | Promise<boolean>;
+    evaluateDetailed(log: (msg: string) => void): number | boolean | Promise<boolean>;
 }
 
 export abstract class SupplierAST implements AST {
@@ -224,5 +224,143 @@ export class CompareAST implements AST {
         }
         log(`Compare expr: ${a.toFixed(2)} ${this.operator} ${b.toFixed(2)} => ${result}`);
         return result;
+    }
+}
+
+// -------------------- 거래 액션 AST 노드들 --------------------
+export abstract class TradeActionAST implements AST {
+    stock: string;
+    condition: AST | null;
+
+    constructor(stock: string, condition: AST | null = null) {
+        this.stock = stock;
+        this.condition = condition;
+    }
+
+    abstract executeAction(): Promise<void>;
+
+    async evaluate(): Promise<boolean> {
+        if (this.condition) {
+            const conditionMet = this.condition.evaluate() as boolean;
+            if (conditionMet) {
+                await this.executeAction();
+                return true;
+            }
+            return false;
+        }
+        await this.executeAction();
+        return true;
+    }
+
+    async evaluateDetailed(log: (msg: string) => void): Promise<boolean> {
+        if (this.condition) {
+            const conditionMet = this.condition.evaluateDetailed(log) as boolean;
+            log(`Condition result: ${conditionMet}`);
+            if (conditionMet) {
+                await this.executeAction();
+                return true;
+            }
+            return false;
+        }
+        await this.executeAction();
+        return true;
+    }
+}
+
+export class MarketBuyAST extends TradeActionAST {
+    amount: number;
+
+    constructor(stock: string, amount: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.amount = amount;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.marketBuy(this.stock, this.amount);
+    }
+}
+
+export class MarketSellAST extends TradeActionAST {
+    volume: number;
+
+    constructor(stock: string, volume: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.volume = volume;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.marketSell(this.stock, this.volume);
+    }
+}
+
+export class LimitBuyAST extends TradeActionAST {
+    price: number;
+    volume: number;
+
+    constructor(stock: string, price: number, volume: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.price = price;
+        this.volume = volume;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.placeOrder({
+            market: this.stock,
+            side: 'bid',
+            orderType: 'limit',
+            price: this.price,
+            volume: this.volume
+        });
+    }
+}
+
+export class LimitSellAST extends TradeActionAST {
+    price: number;
+    volume: number;
+
+    constructor(stock: string, price: number, volume: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.price = price;
+        this.volume = volume;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.placeOrder({
+            market: this.stock,
+            side: 'ask',
+            orderType: 'limit',
+            price: this.price,
+            volume: this.volume
+        });
+    }
+}
+
+export class LimitBuyWithKRWAST extends TradeActionAST {
+    price: number;
+    amount: number;
+
+    constructor(stock: string, price: number, amount: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.price = price;
+        this.amount = amount;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.limitBuyWithKRW(this.stock, this.price, this.amount);
+    }
+}
+
+export class SellAllAST extends TradeActionAST {
+    orderType: 'market' | 'limit';
+    limitPrice: number;
+
+    constructor(stock: string, orderType: string, limitPrice: number, condition: AST | null = null) {
+        super(stock, condition);
+        this.orderType = (orderType === 'limit' ? 'limit' : 'market');
+        this.limitPrice = limitPrice;
+    }
+
+    async executeAction(): Promise<void> {
+        await window.electronAPI.sellAll(this.stock, this.orderType, this.limitPrice);
     }
 }

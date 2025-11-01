@@ -14,7 +14,6 @@ export async function saveApiKeys(accessKey, secretKey) {
   try {
     store.set('upbit.accessKey', accessKey);
     store.set('upbit.secretKey', secretKey);
-    console.log('API 키가 암호화되어 저장되었습니다.');
     return true;
   } catch (error) {
     console.error('API 키 저장 실패:', error);
@@ -31,11 +30,9 @@ export async function loadApiKeys() {
     const secretKey = store.get('upbit.secretKey');
 
     if (accessKey && secretKey) {
-      console.log('저장된 API 키를 불러왔습니다.');
       return { accessKey, secretKey };
     }
 
-    console.log('저장된 API 키가 없습니다.');
     return null;
   } catch (error) {
     console.error('API 키 불러오기 실패:', error);
@@ -185,9 +182,9 @@ export async function placeOrder(options) {
     const { market, side, orderType, price, volume } = options;
 
     // 주문 타입별 body 구성
-    let body = {
-      market: market,
-      side: side,  // 'bid' (매수) or 'ask' (매도)
+    const body = {
+      market,
+      side,  // 'bid' (매수) or 'ask' (매도)
     };
 
     if (orderType === 'market') {
@@ -195,17 +192,17 @@ export async function placeOrder(options) {
       if (side === 'bid') {
         // 시장가 매수: 금액 지정
         body.ord_type = 'price';
-        body.price = price.toString();
+        body.price = String(price);
       } else {
         // 시장가 매도: 수량 지정
         body.ord_type = 'market';
-        body.volume = volume.toString();
+        body.volume = String(volume);
       }
     } else if (orderType === 'limit') {
       // 지정가 주문: 가격과 수량 둘 다 지정
       body.ord_type = 'limit';
-      body.price = price.toString();
-      body.volume = volume.toString();
+      body.price = String(price);
+      body.volume = String(volume);
     } else {
       throw new Error(`지원하지 않는 주문 타입: ${orderType}`);
     }
@@ -283,7 +280,6 @@ export async function getCurrentPrice(market) {
     const response = await axios.get(API_ENDPOINT, { params });
     const currentPrice = response.data[0].trade_price;
 
-    console.log(`[현재가] ${market}: ${currentPrice.toLocaleString()}원`);
     return {
       success: true,
       price: currentPrice,
@@ -291,7 +287,6 @@ export async function getCurrentPrice(market) {
     };
   } catch (error) {
     const errorMessage = error.response ? error.response.data : error.message;
-    console.error('[현재가 조회 실패]', errorMessage);
     return {
       success: false,
       error: errorMessage

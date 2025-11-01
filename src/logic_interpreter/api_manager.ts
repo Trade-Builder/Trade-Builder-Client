@@ -4,14 +4,18 @@ export class APIManager {
     private timeData: Array<number>;
     private volumeData: Array<number>;
     private highestPriceCache: Map<string, number>;
+    private currentPrice: number;
+    private market: string;
 
-    constructor() {
+    constructor(market: string = 'KRW-BTC') {
         this.priceData = [];
         this.timeData = [];
         this.volumeData = [];
         this.highestPriceCache = new Map<string, number>();
-        
-        window.electronAPI.fetchCandles('KRW-BTC', 60, 200).then((result) => {
+        this.currentPrice = 0;
+        this.market = market;
+
+        window.electronAPI.fetchCandles(market, 60, 200).then((result) => {
             if (result.success && result.data) {
                 for (let candle of result.data) {
                     this.timeData.push(candle.timestamp);
@@ -20,6 +24,17 @@ export class APIManager {
                 }
             }
         });
+
+        // 실시간 현재가 업데이트
+        this.updateCurrentPrice();
+        setInterval(() => this.updateCurrentPrice(), 1000); // 1초마다 업데이트
+    }
+
+    private async updateCurrentPrice() {
+        const result = await window.electronAPI.getCurrentPrice(this.market);
+        if (result.success && result.price) {
+            this.currentPrice = result.price;
+        }
     }
 
     public setReadyHighestPrice(periodUnit: string, period: number) : Promise<void>{
@@ -29,7 +44,12 @@ export class APIManager {
     }
 
     public getLatestPrice() : number{
-        return this.priceData[this.priceData.length - 1];
+        // 실시간 현재가 반환, 없으면 캔들 데이터의 마지막 가격
+        return this.currentPrice || this.priceData[this.priceData.length - 1];
+    }
+
+    public getCurrentPrice() : number {
+        return this.currentPrice;
     }
 
     public getHighestPrice(period: string) : number {

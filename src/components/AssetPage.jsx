@@ -116,9 +116,7 @@ const AssetPage = ({
         // 현재가 일괄 조회
         const prices = await getCurrentPrices(markets);
         setCurrentPrices(prices);
-        console.log('현재가 조회 완료:', prices);
       } catch (error) {
-        console.error('현재가 조회 실패:', error);
         setCurrentPrices({});
       }
     };

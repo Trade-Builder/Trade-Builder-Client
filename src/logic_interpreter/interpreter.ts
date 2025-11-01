@@ -1,9 +1,10 @@
 import type { AST } from "./ast";
 import {RLConnection} from "../communicator/RLConnection";
-import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST} from "./ast";
+import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, MarketBuyAST, MarketSellAST, LimitBuyAST, LimitSellAST, LimitBuyWithKRWAST, SellAllAST} from "./ast";
 import {APIManager} from "./api_manager";
 
 let dummydata = [1];
+// @ts-ignore - 나중에 사용할 함수
 function* RLRunningRoutine(log: (title: string, msg: string) => void) {
     window.electronAPI.startRL();
     yield wait(5000);
@@ -21,6 +22,7 @@ function wait(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// @ts-ignore - 나중에 사용할 함수
 function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
     const iterator = generatorFunc(log);
 
@@ -79,8 +81,8 @@ class Interpreter {
 
     public run(logDetails: boolean) {
         if (!this.parseComplete) { return; }
-        this.runBuy(logDetails);
-        //this.runSell(logDetails);
+        // this.runBuy(logDetails);
+        this.runSell(logDetails);
     }
 
     public runBuy(logDetails: boolean) {
@@ -207,23 +209,92 @@ class Interpreter {
                 }
                 return new CompareAST(node.controls.operator, this.parseRecursive(children[0]), this.parseRecursive(children[1]));
             }
+            case "marketBuy": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new MarketBuyAST(this.stock, tryParseFloat(node.controls.amount), condition);
+            }
+            case "marketSell": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new MarketSellAST(this.stock, tryParseFloat(node.controls.volume), condition);
+            }
+            case "limitBuy": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new LimitBuyAST(
+                    this.stock,
+                    tryParseFloat(node.controls.price),
+                    tryParseFloat(node.controls.volume),
+                    condition
+                );
+            }
+            case "limitSell": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new LimitSellAST(
+                    this.stock,
+                    tryParseFloat(node.controls.price),
+                    tryParseFloat(node.controls.volume),
+                    condition
+                );
+            }
+            case "limitBuyWithKRW": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new LimitBuyWithKRWAST(
+                    this.stock,
+                    tryParseFloat(node.controls.price),
+                    tryParseFloat(node.controls.amount),
+                    condition
+                );
+            }
+            case "sellAll": {
+                const children = this.connections.get(nodeID);
+                const condition = children && children.length > 0 ? this.parseRecursive(children[0]) : null;
+                return new SellAllAST(
+                    this.stock,
+                    node.controls.orderType,
+                    tryParseFloat(node.controls.limitPrice || '0'),
+                    condition
+                );
+            }
             default:
                 throw new Error(`알 수 없는 노드 종류: ${node.kind}`);
         }
     }
 
     private async doBuy() {
-        let msg = '';
-        if (this.buyOrderData.orderType === 'market') {
-            await window.electronAPI.marketBuy(this.stock, this.buyOrderData.quantity);
-            msg = `시장가 ${this.buyOrderData.quantity}원어치 매수`;
+        try {
+            // 계좌 조회해서 KRW 잔고 가져오기
+            const accounts = await window.electronAPI.fetchUpbitAccounts();
+            const krwAccount = accounts.find((acc: any) => acc.currency === 'KRW');
+
+            if (!krwAccount) {
+                if (this.log != null)
+                    this.log("Buy", "원화 계좌를 찾을 수 없습니다");
+                return;
+            }
+
+            const availableKRW = parseFloat(krwAccount.balance);
+            const buyPercent = this.buyOrderData.buyPercent;
+            const buyAmount = Math.floor(availableKRW * (buyPercent / 100));
+
+            if (buyAmount < 5000) {
+                if (this.log != null)
+                    this.log("Buy", `매수 금액이 너무 적습니다 (${buyAmount}원, 최소 5000원)`);
+                return;
+            }
+
+            await window.electronAPI.marketBuy(this.stock, buyAmount);
+            const msg = `시장가 ${buyAmount.toLocaleString()}원 매수 (보유금 ${availableKRW.toLocaleString()}원의 ${buyPercent}%)`;
+
+            if (this.log != null)
+                this.log("Buy", msg);
+        } catch (error: any) {
+            if (this.log != null)
+                this.log("Buy", `매수 실패: ${error.message}`);
         }
-        else {
-            await window.electronAPI.limitBuyWithKRW(this.stock, this.buyOrderData.limitPrice, this.buyOrderData.quantity);
-            msg = `지정가 ${this.buyOrderData.limitPrice}$에 ${this.buyOrderData.quantity}원어치 매수`;
-        }
-        if (this.log != null) 
-            this.log("Buy", msg);
     }
 
     private async doSell() {
@@ -248,7 +319,8 @@ class Interpreter {
         this.log = logFunc;
     }
 
-    private loadLogic() { //나중에 메인 화면에서 실행하는 경우 사용
+    // @ts-ignore - 나중에 메인 화면에서 실행하는 경우 사용
+    private loadLogic() {
         const savedLogics = JSON.parse(localStorage.getItem('userLogics')!!);
         const targetLogic = savedLogics.find((item: any) => item.id === this.logicID);
         return [targetLogic.stock, targetLogic.data];
@@ -259,17 +331,26 @@ class OrderData {
     orderType: string;
     limitPrice: number;
     quantity: number;
+    buyPercent: number;
 
     constructor() {
         this.orderType = "";
         this.limitPrice = 0;
         this.quantity = 0;
+        this.buyPercent = 100;
     }
 
     init(data: any) {
-        this.orderType = data.orderType;
-        this.limitPrice = data.limitPrice;
-        this.quantity = data.sellPercent;
+        // Buy 노드용
+        if (data.buyPercent !== undefined) {
+            this.buyPercent = parseFloat(data.buyPercent) || 100;
+        }
+        // Sell 노드용 (기존 로직 유지)
+        if (data.orderType !== undefined) {
+            this.orderType = data.orderType;
+            this.limitPrice = data.limitPrice;
+            this.quantity = data.sellPercent;
+        }
     }
 }
 
@@ -278,6 +359,13 @@ function tryParseInt(v: any): number {
         throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
     }
     return parseInt(v);
+}
+
+function tryParseFloat(v: any): number {
+    if (isNaN(v)) {
+        throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
+    }
+    return parseFloat(v);
 }
 
 const interpreter = new Interpreter();

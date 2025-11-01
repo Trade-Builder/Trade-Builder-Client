@@ -26,6 +26,12 @@ export type NodeKind =
     | 'buy'
     | 'sell'
     | 'branch'
+    | 'marketBuy'
+    | 'marketSell'
+    | 'limitBuy'
+    | 'limitSell'
+    | 'limitBuyWithKRW'
+    | 'sellAll'
 
 export type SerializedGraph = {
     nodes: Array<{
@@ -74,8 +80,12 @@ export class CurrentPriceNode extends TradeNode {
     constructor() {
         super('CurrentPrice')
         this.addOutput('value', new ClassicPreset.Output(numberSocket, '가격'))
+        this.addControl('currentPrice', new ClassicPreset.InputControl('text', { initial: '조회 중...' as any, readonly: true }))
         this.kind = 'currentPrice'
         this.category = 'supplier'
+        this._controlHints = {
+            currentPrice: { label: '현재가', title: '실시간 현재가' }
+        }
     }
 }
 
@@ -179,17 +189,13 @@ export class BuyNode extends TradeNode {
     constructor() {
         super('Buy')
         this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool')) //bool 값을 받음
-        // this.addOutput('out', new ClassicPreset.Output(flowSocket, '다음'))
-        this.addControl('orderType', new ClassicPreset.InputControl('text', { initial: 'market' })) // market|limit
-        // 숫자 스핀 제거 및 공백 허용을 위해 number -> text
-        this.addControl('limitPrice', new ClassicPreset.InputControl('text', { initial: 100 as any }))
-        this.addControl('sellPercent', new ClassicPreset.InputControl('text', { initial: 2 as any }))
+        this.addControl('buyPercent', new ClassicPreset.InputControl('text', { initial: '100' as any }))
+        this.addControl('calculatedAmount', new ClassicPreset.InputControl('text', { initial: '계산 중...' as any, readonly: true }))
         this.kind = 'buy'
         this.category = 'consumer'
         this._controlHints = {
-            orderType: { label: '주문유형', title: '주문 방식 (market: 시장가 / limit: 지정가)' },
-            limitPrice: { label: '지정가', title: 'orderType이 limit일 때 사용되는 가격' },
-            sellPercent: { label: '청산%', title: '목표 수익률(%) 도달 시 매도 (예: 2 => 2%)' }
+            buyPercent: { label: '매수 비율 (%) [시장가]', title: '보유 원화 중 사용할 비율 (0~100), 시장가 매수' },
+            calculatedAmount: { label: '예상 매수 금액 (₩)', title: '계산된 매수 금액' }
         }
     }
 }
@@ -223,6 +229,99 @@ export class BranchNode extends TradeNode {
         this.addOutput('false', new ClassicPreset.Output(flowSocket, '거짓'))
         this.kind = 'branch'
         this.category = 'flow'
+    }
+}
+
+// -------------------- 새로운 거래 노드들 --------------------
+// 시장가 매수 (KRW 금액 지정)
+export class MarketBuyNode extends TradeNode {
+    constructor() {
+        super('시장가 매수')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('amount', new ClassicPreset.InputControl('text', { initial: '10000' as any }))
+        this.kind = 'marketBuy'
+        this.category = 'consumer'
+        this._controlHints = {
+            amount: { label: '매수 금액 (₩원화)', title: '매수할 원화 금액' }
+        }
+    }
+}
+
+// 시장가 매도 (코인 수량 지정)
+export class MarketSellNode extends TradeNode {
+    constructor() {
+        super('시장가 매도')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('volume', new ClassicPreset.InputControl('text', { initial: '0.001' as any }))
+        this.kind = 'marketSell'
+        this.category = 'consumer'
+        this._controlHints = {
+            volume: { label: '매도 수량 (코인)', title: '매도할 코인 수량' }
+        }
+    }
+}
+
+// 지정가 매수 (가격 + 수량)
+export class LimitBuyNode extends TradeNode {
+    constructor() {
+        super('지정가 매수')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('price', new ClassicPreset.InputControl('text', { initial: '50000' as any }))
+        this.addControl('volume', new ClassicPreset.InputControl('text', { initial: '0.001' as any }))
+        this.kind = 'limitBuy'
+        this.category = 'consumer'
+        this._controlHints = {
+            price: { label: '지정 가격 (₩원화)', title: '1개당 매수 가격 (원화)' },
+            volume: { label: '매수 수량 (코인)', title: '매수할 코인 수량' }
+        }
+    }
+}
+
+// 지정가 매도 (가격 + 수량)
+export class LimitSellNode extends TradeNode {
+    constructor() {
+        super('지정가 매도')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('price', new ClassicPreset.InputControl('text', { initial: '50000' as any }))
+        this.addControl('volume', new ClassicPreset.InputControl('text', { initial: '0.001' as any }))
+        this.kind = 'limitSell'
+        this.category = 'consumer'
+        this._controlHints = {
+            price: { label: '지정 가격 (₩원화)', title: '1개당 매도 가격 (원화)' },
+            volume: { label: '매도 수량 (코인)', title: '매도할 코인 수량' }
+        }
+    }
+}
+
+// 지정가 매수 (KRW 금액으로)
+export class LimitBuyWithKRWNode extends TradeNode {
+    constructor() {
+        super('지정가 매수 (원화)')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('price', new ClassicPreset.InputControl('text', { initial: '50000' as any }))
+        this.addControl('amount', new ClassicPreset.InputControl('text', { initial: '10000' as any }))
+        this.kind = 'limitBuyWithKRW'
+        this.category = 'consumer'
+        this._controlHints = {
+            price: { label: '지정 가격 (₩원화)', title: '1개당 매수 가격 (원화)' },
+            amount: { label: '매수 금액 (₩원화)', title: '사용할 원화 금액' }
+        }
+    }
+}
+
+// 전량 매도
+export class SellAllNode extends TradeNode {
+    constructor() {
+        super('전량 매도')
+        this.addInput('cond', new ClassicPreset.Input(boolSocket, 'Bool'))
+        this.addControl('orderType', new ClassicPreset.InputControl('text', { initial: 'market' as any }))
+        this.addControl('limitPrice', new ClassicPreset.InputControl('text', { initial: '0' as any }))
+        this.kind = 'sellAll'
+        this.category = 'consumer'
+        this._controlHints = {
+            orderType: { label: '주문 유형', title: 'market (시장가) 또는 limit (지정가)' },
+            limitPrice: { label: '지정 가격', title: 'orderType이 limit일 때 사용' }
+        }
     }
 }
 
@@ -283,6 +382,12 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             }
             const res = await originalAddNode(node)
             applySelectEnhancements(node)
+
+            // Buy 노드가 추가되면 즉시 금액 계산
+            if (node.kind === 'buy') {
+                setTimeout(() => updateBuyNodeAmounts(), 100)
+            }
+
             return res
         }
 
@@ -389,10 +494,76 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         if ((e as KeyboardEvent).key === 'Escape') closeMenu()
     })
 
+    // -------------------- Buy 노드 금액 계산 자동 업데이트 --------------------
+    async function updateBuyNodeAmounts() {
+        try {
+            const accounts = await window.electronAPI.fetchUpbitAccounts()
+            const krwAccount = accounts.find((acc: any) => acc.currency === 'KRW')
+
+            if (!krwAccount) return
+
+            const availableKRW = parseFloat(krwAccount.balance)
+            const nodes = editor.getNodes() as TradeNode[]
+
+            for (const node of nodes) {
+                if (node.kind === 'buy') {
+                    const percentControl = (node.controls as any).buyPercent
+                    const amountControl = (node.controls as any).calculatedAmount
+
+                    if (percentControl && amountControl) {
+                        const percent = parseFloat(percentControl.value as string) || 0
+
+                        if (percent < 0 || percent > 100) {
+                            amountControl.value = '0~100 입력'
+                        } else {
+                            const buyAmount = Math.floor(availableKRW * (percent / 100))
+                            amountControl.value = `₩${buyAmount.toLocaleString()}`
+                        }
+
+                        await area.update('control', amountControl.id)
+                    }
+                }
+            }
+        } catch (error) {
+            // 에러 무시
+        }
+    }
+
+    // -------------------- 현재가 자동 업데이트 --------------------
+    async function updateCurrentPriceNodes() {
+        try {
+            const result = await window.electronAPI.getCurrentPrice('KRW-BTC')
+            if (result.success && result.price) {
+                const nodes = editor.getNodes() as TradeNode[]
+                for (const node of nodes) {
+                    if (node.kind === 'currentPrice') {
+                        const control = (node.controls as any).currentPrice
+                        if (control) {
+                            control.value = `₩${result.price.toLocaleString()}`
+                            await area.update('control', control.id)
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            // 에러 무시 (콘솔 로그 제거)
+        }
+    }
+
+    // 2초마다 현재가 업데이트
+    updateCurrentPriceNodes()
+    const priceUpdateInterval = setInterval(updateCurrentPriceNodes, 2000)
+
+    // 3초마다 Buy 노드 금액 업데이트
+    updateBuyNodeAmounts()
+    const buyAmountUpdateInterval = setInterval(updateBuyNodeAmounts, 3000)
+
     return {
         editor,
         area,
         destroy: () => {
+            clearInterval(priceUpdateInterval)
+            clearInterval(buyAmountUpdateInterval)
             closeMenu()
             menu.remove()
                 ; (area as any).destroy()
@@ -428,6 +599,18 @@ export function createNodeByKind(kind: NodeKind): TradeNode {
             return new BuyNode()
         case 'sell':
             return new SellNode()
+        case 'marketBuy':
+            return new MarketBuyNode()
+        case 'marketSell':
+            return new MarketSellNode()
+        case 'limitBuy':
+            return new LimitBuyNode()
+        case 'limitSell':
+            return new LimitSellNode()
+        case 'limitBuyWithKRW':
+            return new LimitBuyWithKRWNode()
+        case 'sellAll':
+            return new SellAllNode()
         // Branch/Flow
         case 'branch':
             return new BranchNode()
@@ -477,6 +660,24 @@ const labelToKind = (label: string): NodeKind | undefined => {
         case '매도 로직':
         case '매도':
             return 'sell'
+        case '시장가 매수':
+        case 'MarketBuy':
+            return 'marketBuy'
+        case '시장가 매도':
+        case 'MarketSell':
+            return 'marketSell'
+        case '지정가 매수':
+        case 'LimitBuy':
+            return 'limitBuy'
+        case '지정가 매도':
+        case 'LimitSell':
+            return 'limitSell'
+        case '지정가 매수 (KRW)':
+        case 'LimitBuyWithKRW':
+            return 'limitBuyWithKRW'
+        case '전량 매도':
+        case 'SellAll':
+            return 'sellAll'
         // Branch/Flow
         case '조건 분기':
         case '조건분기':
