@@ -398,6 +398,8 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             // 삭제 후 선택 초기화 및 하이라이트 제거
             selectedNodeIds.clear()
             applySelectionOutline()
+            // 히스토리 저장: 삭제 완료
+            pushHistory()
         }
         closeMenu()
     })
@@ -413,6 +415,46 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     const selectedNodeIds = new Set<string>()
     let clipboard: SerializedGraph | null = null
     let lastContextPosClient: { x: number; y: number } | null = null
+
+    // --- Undo/Redo 히스토리 ---
+    const HISTORY_MAX = 50
+    const history: SerializedGraph[] = []
+    let historyIndex = -1
+    function pushHistory() {
+        try {
+            const snap = exportGraph(editor, area)
+            if (historyIndex < history.length - 1) history.splice(historyIndex + 1)
+            history.push(snap)
+            if (history.length > HISTORY_MAX) history.shift()
+            historyIndex = history.length - 1
+        } catch { /* noop */ }
+    }
+    async function undo() {
+        if (historyIndex <= 0) return
+        historyIndex--
+        try { await importGraph(editor, area, history[historyIndex]) } catch { /* noop */ }
+        selectedNodeIds.clear(); applySelectionOutline()
+    }
+    async function redo() {
+        if (historyIndex >= history.length - 1) return
+        historyIndex++
+        try { await importGraph(editor, area, history[historyIndex]) } catch { /* noop */ }
+        selectedNodeIds.clear(); applySelectionOutline()
+    }
+    // 초기 스냅샷 저장
+    pushHistory()
+    // Ctrl/Cmd+Z (Undo), Ctrl/Cmd+Shift+Z 또는 Ctrl+Y (Redo)
+    const onKeyUndoRedo = (e: KeyboardEvent) => {
+        const key = String(e.key || '').toLowerCase()
+        const ctrl = e.ctrlKey || e.metaKey
+        if (!ctrl) return
+        if (key === 'z' && !e.shiftKey) {
+            e.preventDefault(); e.stopPropagation(); void undo()
+        } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+            e.preventDefault(); e.stopPropagation(); void redo()
+        }
+    }
+    window.addEventListener('keydown', onKeyUndoRedo, true)
 
     // 선택 하이라이트 적용/해제 (DOM outline로 표시)
     function applySelectionOutline() {
@@ -552,6 +594,8 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                 ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
                 window.removeEventListener('pointermove', onMove, true)
                 window.removeEventListener('pointerup', onUp, true)
+                // 이동 완료 후 히스토리 저장
+                pushHistory()
             }
             window.addEventListener('pointermove', onMove, true)
             window.addEventListener('pointerup', onUp, true)
@@ -652,6 +696,8 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         // 붙여넣기 후 선택 초기화
         selectedNodeIds.clear()
         applySelectionOutline()
+        // 히스토리 저장: 붙여넣기 완료
+        pushHistory()
     }
 
     copyBtn.addEventListener('click', () => { handleCopy() })
@@ -693,6 +739,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             menu.remove()
             marquee.remove()
                 ; (area as any).destroy()
+            window.removeEventListener('keydown', onKeyUndoRedo, true)
         }
     }
 }
