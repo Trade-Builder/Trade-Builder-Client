@@ -1,6 +1,5 @@
 import axios from 'axios';
-import { SignJWT } from 'jose';
-import { v4 as uuidv4 } from 'uuid';
+import { createUpbitJWT } from './upbit/auth.js';
 import Store from 'electron-store';
 
 // Store 인스턴스 생성
@@ -56,15 +55,7 @@ export async function fetchUpbitAccounts() {
 
     const { accessKey, secretKey } = keys;
 
-    const payload = {
-      access_key: accessKey,
-      nonce: uuidv4(),
-    };
-
-    const secret = new TextEncoder().encode(secretKey);
-    const jwtToken = await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .sign(secret);
+    const jwtToken = await createUpbitJWT(accessKey, secretKey);
 
     const API_ENDPOINT = 'https://api.upbit.com/v1/accounts';
     const headers = {
@@ -220,21 +211,7 @@ export async function placeOrder(options) {
     }
 
     // JWT 인증 토큰 생성
-    const query = new URLSearchParams(body).toString();
-    const hash = require('crypto').createHash('sha512');
-    const queryHash = hash.update(query, 'utf-8').digest('hex');
-
-    const payload = {
-      access_key: accessKey,
-      nonce: uuidv4(),
-      query_hash: queryHash,
-      query_hash_alg: 'SHA512'
-    };
-
-    const secret = new TextEncoder().encode(secretKey);
-    const jwtToken = await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .sign(secret);
+    const jwtToken = await createUpbitJWT(accessKey, secretKey, body);
 
     // API 요청
     const API_ENDPOINT = 'https://api.upbit.com/v1/orders';
@@ -345,6 +322,8 @@ export async function getCurrentPrices(markets) {
     const priceMap = {};
     response.data.forEach(ticker => {
       priceMap[ticker.market] = ticker.trade_price;
+      // 오늘의 시가(opening_price)도 저장 - P/L 계산에 사용
+      priceMap[`${ticker.market}_open`] = ticker.opening_price;
     });
 
     console.log(`[현재가 일괄 조회] ${markets.length}개 마켓 조회 완료`);
