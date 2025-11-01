@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('upbit:fetchAccounts', accessKey, secretKey),
 
   /**
-   * 업비트 1분봉 캔들 데이터 조회
+   * 업비트 1분봉 캔들 데이터 조회 (하위 호환성)
    * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
    * @param {number} count - 가져올 캔들 개수 (기본값: 200, 최대: 200)
    * @returns {Promise<Array>} 1분봉 데이터 배열 (종가, 시가, 고가, 저가, 거래량 등)
@@ -34,30 +34,51 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('upbit:fetch1mCandles', market, count),
 
   /**
-   * 업비트 1분봉 캔들 데이터 가져와서 바로 저장 (원스텝)
+   * 업비트 캔들 데이터 조회 (시간 간격 선택 가능)
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} interval - 시간 간격 (분 단위: 1, 3, 5, 10, 15, 30, 60, 240)
+   * @param {number} count - 가져올 캔들 개수 (기본값: 200, 최대: 200)
+   * @returns {Promise<Array>} 캔들 데이터 배열
+   */
+  fetchCandles: (market, interval = 1, count = 200) =>
+    ipcRenderer.invoke('upbit:fetchCandles', market, interval, count),
+
+  /**
+   * 업비트 1분봉 캔들 데이터 가져와서 바로 저장 (하위 호환성)
    * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
    * @param {number} count - 가져올 캔들 개수 (기본값: 200, 최대: 200)
-   * @returns {Promise<{success: boolean, path?: string, dataCount?: number, market?: string, error?: any}>}
+   * @returns {Promise<{success: boolean, data?: Array, dataCount?: number, market?: string, interval?: number, error?: any}>}
    */
   fetchAndSave1mCandles: (market, count = 200) =>
     ipcRenderer.invoke('upbit:fetchAndSave1mCandles', market, count),
 
   /**
-   * 업비트 1분봉 자동 업데이트 시작 (큐 방식)
-   * 초기 200개 데이터를 가져온 후, 1분마다 최신 데이터 1개씩 업데이트
+   * 업비트 캔들 데이터 가져와서 배열로 저장 (시간 간격 선택 가능)
    * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
-   * @param {number} maxCount - 유지할 최대 데이터 개수 (기본값: 200)
-   * @returns {Promise<{success: boolean, message?: string, path?: string, initialDataCount?: number, error?: string}>}
+   * @param {number} interval - 시간 간격 (분 단위: 1, 3, 5, 10, 15, 30, 60, 240)
+   * @param {number} count - 가져올 캔들 개수 (기본값: 200, 최대: 200)
+   * @returns {Promise<{success: boolean, data?: Array, dataCount?: number, market?: string, interval?: number, error?: any}>}
    */
-  startCandleUpdates: (market, maxCount = 200) =>
-    ipcRenderer.invoke('upbit:startCandleUpdates', market, maxCount),
+  fetchAndSaveCandles: (market, interval = 1, count = 200) =>
+    ipcRenderer.invoke('upbit:fetchAndSaveCandles', market, interval, count),
 
   /**
-   * 업비트 1분봉 자동 업데이트 중지
+   * 업비트 캔들 자동 업데이트 시작 (시간 간격 선택 가능)
+   * 초기 200개 데이터를 가져온 후, interval마다 최신 데이터 1개씩 업데이트
+   * @param {string} market - 마켓 코드 (예: 'KRW-BTC')
+   * @param {number} interval - 시간 간격 (분 단위: 1, 3, 5, 10, 15, 30, 60, 240)
+   * @returns {Promise<{success: boolean, message?: string, initialDataCount?: number, interval?: number, error?: string}>}
+   */
+  startCandleUpdates: (market, interval = 1) =>
+    ipcRenderer.invoke('upbit:startCandleUpdates', market, interval),
+
+  /**
+   * 캔들 데이터 자동 업데이트 중지
+   * @param {number} interval - 중지할 시간 간격 (생략 시 모든 업데이트 중지)
    * @returns {Promise<{success: boolean, message: string}>}
    */
-  stopCandleUpdates: () =>
-    ipcRenderer.invoke('upbit:stopCandleUpdates'),
+  stopCandleUpdates: (interval = null) =>
+    ipcRenderer.invoke('upbit:stopCandleUpdates', interval),
 
   /**
    * Python 프로세스 시작
@@ -70,22 +91,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopRL: () => ipcRenderer.invoke('RL:stop'),
 
   /**
-   * 메모리에서 전체 캔들 데이터 가져오기
-   * @returns {Promise<{timestamps: number[], closingPrices: number[], volumes: number[], count: number}>}
+   * 메모리에서 특정 시간 간격의 캔들 데이터 가져오기
+   * @param {number} interval - 시간 간격 (분 단위: 1, 3, 5, 10, 15, 30, 60, 240)
+   * @returns {Promise<{timestamps: number[], closingPrices: number[], volumes: number[], count: number, interval: number}>}
    */
-  getCandleData: () => ipcRenderer.invoke('candle:getData'),
+  getCandleData: (interval = 1) => ipcRenderer.invoke('candle:getData', interval),
+
+  /**
+   * 메모리에서 모든 시간 간격의 캔들 데이터 가져오기
+   * @returns {Promise<{[interval: number]: {timestamps: number[], closingPrices: number[], volumes: number[], count: number, market: string}}>}
+   */
+  getAllCandleData: () => ipcRenderer.invoke('candle:getAllData'),
 
   /**
    * 최신 캔들 데이터 가져오기
-   * @returns {Promise<{timestamp: number, closingPrice: number, volume: number} | null>}
+   * @param {number} interval - 시간 간격 (분 단위: 1, 3, 5, 10, 15, 30, 60, 240)
+   * @returns {Promise<{timestamp: number, closingPrice: number, volume: number, interval: number} | null>}
    */
-  getLatestCandle: () => ipcRenderer.invoke('candle:getLatest'),
+  getLatestCandle: (interval = 1) => ipcRenderer.invoke('candle:getLatest', interval),
 
   /**
    * 특정 범위의 캔들 데이터 가져오기
+   * @param {number} interval - 시간 간격 (분 단위)
    * @param {number} start - 시작 인덱스 (0부터 시작, 0이 최신 데이터)
    * @param {number} end - 끝 인덱스 (생략 시 끝까지)
-   * @returns {Promise<{timestamps: number[], closingPrices: number[], volumes: number[], count: number}>}
+   * @returns {Promise<{timestamps: number[], closingPrices: number[], volumes: number[], count: number, interval: number}>}
    */
-  getCandleRange: (start, end) => ipcRenderer.invoke('candle:getRange', start, end),
+  getCandleRange: (interval, start, end) => ipcRenderer.invoke('candle:getRange', interval, start, end),
 });
