@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Store from 'electron-store';
-import { launchRLProcess, stopRLProcess } from './RLlauncher.js';
+import { launchRLProcess, stopRLProcess } from './rl_launcher.js';
 import {
   getCandleData,
   getAllCandleData,
@@ -25,7 +25,7 @@ import {
   sellAtCurrentPrice,
   limitBuyWithKRW,
   sellAll
-} from './candleDataManager.js';
+} from './upbit_api_manager.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
@@ -55,19 +55,11 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow();
-
-  // Electron 시작 시 자동으로 비트코인 1분봉 데이터 업데이트 시작
-  await startCandleUpdates('KRW-BTC');
-
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  //await startCandleUpdates('KRW-BTC');
 });
 
 app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') {
     app.quit();
-  }
 });
 
 // 앱 종료 시 RL 프로세스 및 캔들 데이터 업데이트 종료
