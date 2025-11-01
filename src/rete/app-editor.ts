@@ -492,7 +492,9 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             e.preventDefault(); e.stopPropagation(); void redo()
         }
     }
-    window.addEventListener('keydown', onKeyUndoRedo, true)
+    // 임시 비활성화: Ctrl+Z/Redo 히스토리 단축키를 당분간 끕니다.
+    const ENABLE_HISTORY_HOTKEYS = false
+    if (ENABLE_HISTORY_HOTKEYS) window.addEventListener('keydown', onKeyUndoRedo, true)
 
     // 선택 하이라이트 적용/해제 (DOM outline로 표시)
     function applySelectionOutline() {
