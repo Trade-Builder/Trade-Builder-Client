@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import AssetPage from './components/AssetPage';
 import LogicEditorPage from './components/LogicEditorPage';
 import { getMyAssetsWithKeys } from './communicator/upbit_api';
-import { runLogic } from './logic_interpreter/interpreter';
+import { getAllRunningLogics, stopLogic } from './logic_interpreter/logic_runner';
 
 // ----------------------------------------------------------------
 // App: 페이지 라우팅을 담당하는 메인 컴포넌트
@@ -16,7 +16,6 @@ const App = () => {
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(true);
   const [assetsError, setAssetsError] = useState(null);
-  const [runAllInBackground, setRunAllInBackground] = useState(true);
 
   // API 키 관련 상태
   const [hasApiKeys, setHasApiKeys] = useState(false);
@@ -24,6 +23,10 @@ const App = () => {
 
   // 테마 관련 상태
   const [theme, setTheme] = useState('dark'); // 'dark' | 'light'
+
+  // 전역 실행 중인 로직 상태
+  const [runningLogics, setRunningLogics] = useState([]);
+  const [runIntervalSeconds, setRunIntervalSeconds] = useState(5); // 기본 5초
 
   // 데이터 로딩 및 초기화
   useEffect(() => {
@@ -106,20 +109,15 @@ const App = () => {
     loadKeysAndFetchAssets();
   }, []);
 
-  // 모든 로직을 백그라운드 루틴으로 실행 (간단한 타이머 기반)
+  // 실행 중인 로직 상태를 주기적으로 동기화
   useEffect(() => {
-    if (!runAllInBackground) return;
-    const id = setInterval(() => {
-      try {
-        logics.forEach((l) => {
-          if (!l?.data?.buyGraph || !l?.data?.sellGraph) return;
-          // 간단히 콘솔에만 로그 남김
-          runLogic(l.stock ?? '', { buyGraph: l.data.buyGraph, sellGraph: l.data.sellGraph }, () => {}, false);
-        });
-      } catch {}
-    }, 30000); // 30초마다 실행
-    return () => clearInterval(id);
-  }, [runAllInBackground, logics]);
+    const syncInterval = setInterval(() => {
+      const running = getAllRunningLogics();
+      setRunningLogics(running);
+    }, 1000);
+
+    return () => clearInterval(syncInterval);
+  }, []);
 
   // 테마를 documentElement에 반영 + Electron Store에 저장
   useEffect(() => {
@@ -238,6 +236,13 @@ const App = () => {
     }
   };
 
+  /**
+   * 로직 실행 중지 핸들러
+   */
+  const handleStopLogic = (logicId) => {
+    stopLogic(logicId);
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen font-sans bg-transparent">
 
@@ -266,6 +271,10 @@ const App = () => {
           assets={assets}
           assetsLoading={assetsLoading}
           assetsError={assetsError}
+          runningLogics={runningLogics}
+          runIntervalSeconds={runIntervalSeconds}
+          onRunIntervalChange={setRunIntervalSeconds}
+          onStopLogic={handleStopLogic}
           onLogicClick={handleLogicClick}
           onAddNewLogic={handleAddNewLogic}
           onDeleteLogic={handleDeleteLogic}
@@ -305,6 +314,10 @@ const App = () => {
       ) : (
         <LogicEditorPage
           selectedLogicId={selectedLogicId}
+          runningLogics={runningLogics}
+          runIntervalSeconds={runIntervalSeconds}
+          onRunIntervalChange={setRunIntervalSeconds}
+          onStopLogic={handleStopLogic}
           onBack={handleBackToAssetPage}
           onSave={handleSaveLogic}
           defaultNewLogicName={newLogicName}

@@ -1,37 +1,8 @@
 import type { AST } from "./ast";
-import {RLConnection} from "../communicator/RLConnection";
 import {ConstantAST, CurrentPriceAST, HighestPriceAST, RsiAST, RoiAST, SmaAST, CompareAST, LogicOpAST, RLSignalAST} from "./ast";
 import {APIManager} from "./api_manager";
 
-let dummydata = [1];
-function* RLRunningRoutine(log: (title: string, msg: string) => void) {
-    window.electronAPI.startRL();
-    yield wait(5000);
-    let RLServer = new RLConnection();
-    yield wait(2000);
-    RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
-    yield wait(1000);
-    for (let i = 200; i < dummydata.length; i++) {
-        RLServer.send({ action: "run", index: i, data: dummydata[i] });
-        yield wait(500);
-    }
-}
-
-function wait(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => void) => Generator), log: (title: string, msg: string) => void) {
-    const iterator = generatorFunc(log);
-
-    function step(result: IteratorResult<any>) {
-        if (result.done) return; // 끝났으면 종료
-        Promise.resolve(result.value).then(() => step(iterator.next()));
-    }
-    step(iterator.next());
-}
-
-class Interpreter {
+export class Interpreter {
     parseComplete: boolean = false;
     logicID: string | null;
     buyRoot: AST | null;
@@ -45,11 +16,15 @@ class Interpreter {
     log: ((title: string, msg: string) => void);
 
     dataManager: APIManager;
+    
+    // 주문 실행 핸들러 (Worker에서 오버라이드 가능)
+    protected orderExecutor?: (action: 'buy' | 'sell', orderData: OrderData, stock: string) => Promise<void>;
 
-    constructor() {
+    constructor(logFunc?: (title: string, msg: string) => void, orderExecutor?: (action: 'buy' | 'sell', orderData: OrderData, stock: string) => Promise<void>) {
         this.stock = "KRW-BTC";
-        this.log = (a, b) => {};
-        this.dataManager = new APIManager();
+        this.log = logFunc || ((_a, _b) => {});
+        this.orderExecutor = orderExecutor;
+        this.dataManager = new APIManager(this.stock);
 
         this.logicID = null;
         this.buyRoot = null;
@@ -59,37 +34,41 @@ class Interpreter {
         this.sellOrderData = new OrderData();
     }
 
-    public run(logDetails: boolean) {
+    public async run(logDetails: boolean) {
         if (!this.parseComplete) { return; }
-        if (this.buyRoot != null) this.runBuy(logDetails);
-        if (this.sellRoot != null) this.runSell(logDetails);
+        
+        // 데이터 준비가 완료될 때까지 대기
+        await this.dataManager.waitUntilReady();
+        
+        if (this.buyRoot != null) await this.runBuy(logDetails);
+        if (this.sellRoot != null) await this.runSell(logDetails);
     }
 
-    public runBuy(logDetails: boolean) {
+    public async runBuy(logDetails: boolean) {
         let result: boolean;
         if (logDetails) {
-            result = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
+            result = await this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
         }
         else {
-            result = this.buyRoot!.evaluate() as boolean;
+            result = await this.buyRoot!.evaluate() as boolean;
         }
         if (result) {
-            this.doBuy();
+            await this.doBuy();
         } else {
             this.log("BuyGraph", "매수 조건 미충족");
         }
     }
 
-    public runSell(logDetails: boolean) {
+    public async runSell(logDetails: boolean) {
         let result: boolean;
         if (logDetails) {
-            result = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
+            result = await this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
         }
         else {
-            result = this.sellRoot!.evaluate() as boolean;
+            result = await this.sellRoot!.evaluate() as boolean;
         }
         if (result) {
-            this.doSell();
+            await this.doSell();
         } else {
             this.log("SellGraph", "매도 조건 미충족");
         }
@@ -143,7 +122,7 @@ class Interpreter {
         if (buyNodeChild === undefined) {
             throw new Error("매수 노드에 연결된 조건이 없습니다.");
         }
-        this.buyRoot = this.parseRecursive(buyNodeChild[0], nodes, connections);
+        this.buyRoot = this.parseRecursive(buyNodeChild[0], nodes, connections, true);
     }
 
     private parseSell(sellNode: any, sellGraph: any) {
@@ -168,10 +147,10 @@ class Interpreter {
         if (sellNodeChild === undefined) {
             throw new Error("매도 노드에 연결된 조건이 없습니다.");
         }
-        this.sellRoot = this.parseRecursive(sellNodeChild[0], nodes, connections);
+        this.sellRoot = this.parseRecursive(sellNodeChild[0], nodes, connections, false);
     }
 
-    private parseRecursive(nodeID: string, nodes: Map<string, any>, connections: Map<string, string[]>): AST {
+    private parseRecursive(nodeID: string, nodes: Map<string, any>, connections: Map<string, string[]>, isBuyGraph: boolean): AST {
         const node = nodes.get(nodeID);
         switch (node.kind) {
             case "const":
@@ -183,7 +162,7 @@ class Interpreter {
             case "rsi":
                 return new RsiAST(this.dataManager);
             case "rl":
-                return new RLSignalAST();
+                return new RLSignalAST(this.dataManager, isBuyGraph);
             case "sma":
                 const val = tryParseInt(node.controls.period);
                 if (val > 200) {
@@ -201,8 +180,8 @@ class Interpreter {
                     throw new Error("논리 노드에 피연산자 노드가 부족합니다.");
                 }
                 return new LogicOpAST(node.controls.operator, 
-                    this.parseRecursive(children[0], nodes, connections), 
-                    this.parseRecursive(children[1], nodes, connections)
+                    this.parseRecursive(children[0], nodes, connections, isBuyGraph), 
+                    this.parseRecursive(children[1], nodes, connections, isBuyGraph)
                 );
             }
             case "compare": {
@@ -214,8 +193,8 @@ class Interpreter {
                     throw new Error("비교 노드에 피연산자 노드가 부족합니다.");
                 }
                 return new CompareAST(node.controls.operator, 
-                    this.parseRecursive(children[0], nodes, connections), 
-                    this.parseRecursive(children[1], nodes, connections)
+                    this.parseRecursive(children[0], nodes, connections, isBuyGraph), 
+                    this.parseRecursive(children[1], nodes, connections, isBuyGraph)
                 );
             }
             default:
@@ -223,10 +202,19 @@ class Interpreter {
         }
     }
 
-    private async doBuy() {
+    protected async doBuy() {
         const log = this.log.bind(this, "BuyGraph");
+        
+        // orderExecutor가 있으면 사용 (Worker 환경)
+        if (this.orderExecutor) {
+            await this.orderExecutor('buy', this.buyOrderData, this.stock);
+            return;
+        }
+        
+        // 일반 환경에서는 window.electronAPI 사용
         if (this.buyOrderData.orderType === 'market') {
             log(`시장가 ${this.buyOrderData.quantity}₩어치 매수를 시도합니다.`);
+            // @ts-ignore
             const result = await window.electronAPI.marketBuy(this.stock, this.buyOrderData.quantity);
             if (result.success) {
                 log(`시장가 ${this.buyOrderData.quantity}₩어치 매수 완료`);
@@ -236,6 +224,7 @@ class Interpreter {
         }
         else {
             log(`지정가 ${this.buyOrderData.limitPrice}₩에 ${this.buyOrderData.quantity}₩어치 매수를 시도합니다.`);
+            // @ts-ignore
             const result = await window.electronAPI.limitBuyWithKRW(this.stock, this.buyOrderData.limitPrice, this.buyOrderData.quantity);
             if (result.success) {
                 log(`지정가 ${this.buyOrderData.limitPrice}₩에 ${this.buyOrderData.quantity}₩어치 매수 완료`);
@@ -245,10 +234,19 @@ class Interpreter {
         }
     }
 
-    private async doSell() {
+    protected async doSell() {
         const log = this.log.bind(this, "SellGraph");
+        
+        // orderExecutor가 있으면 사용 (Worker 환경)
+        if (this.orderExecutor) {
+            await this.orderExecutor('sell', this.sellOrderData, this.stock);
+            return;
+        }
+        
+        // 일반 환경에서는 window.electronAPI 사용
         if (this.sellOrderData.orderType === 'market') {
             log(`시장가 ${this.sellOrderData.quantity}₩어치 매도를 시도합니다.`);
+            // @ts-ignore
             const result = await window.electronAPI.marketSell(this.stock, this.sellOrderData.quantity);
             if (result.success) {
                 log(`시장가 ${this.sellOrderData.quantity}₩어치 매도 완료`);
@@ -258,6 +256,7 @@ class Interpreter {
         }
         else {
             log(`지정가 ${this.sellOrderData.limitPrice}₩에 ${this.sellOrderData.quantity}₩어치 매도 시도`);
+            // @ts-ignore
             const result = await window.electronAPI.limitSellWithKRW(this.stock, this.sellOrderData.limitPrice, this.sellOrderData.quantity);
             if (result.success) {
                 log(`지정가 ${this.sellOrderData.limitPrice}₩에 ${this.sellOrderData.quantity}₩어치 매도 완료`);
@@ -269,6 +268,9 @@ class Interpreter {
 
     public setStock(stock: string) {
         this.stock = stock;
+        if (this.stock != stock) {
+            this.dataManager = new APIManager(this.stock);
+        }
     }
 
     public setLogfunc(logFunc: (title: string, msg: string) => void) {
@@ -282,7 +284,7 @@ class Interpreter {
     // }
 }
 
-class OrderData {
+export class OrderData {
     orderType: string;
     limitPrice: number;
     quantity: number;
@@ -300,21 +302,9 @@ class OrderData {
     }
 }
 
-function tryParseInt(v: any): number {
+export function tryParseInt(v: any): number {
     if (isNaN(v)) {
         throw new Error(`숫자 형식이 올바르지 않습니다: ${v}`);
     }
     return parseInt(v);
-}
-
-const interpreter = new Interpreter();
-
-export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logDetails: boolean = false) {
-    //startCoroutine(RLRunningRoutine, logFunc);
-    interpreter.setStock(stock);
-    interpreter.setLogfunc(logFunc);
-    interpreter.parse(logicData);
-    setTimeout(() => {
-        interpreter.run(logDetails);
-    }, 500);
 }
