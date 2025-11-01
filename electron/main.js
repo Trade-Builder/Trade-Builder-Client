@@ -55,7 +55,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow();
-  //await startCandleUpdates('KRW-BTC');
+  await startCandleUpdates('KRW-BTC');
 });
 
 app.on('window-all-closed', function () {
