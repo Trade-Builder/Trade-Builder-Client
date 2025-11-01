@@ -421,8 +421,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             // 삭제 후 선택 초기화 및 하이라이트 제거
             selectedNodeIds.clear()
             applySelectionOutline()
-            // 히스토리 저장: 삭제 완료
-            pushHistory()
+            // 삭제 완료
         }
         closeMenu()
     })
@@ -439,33 +438,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     let clipboard: SerializedGraph | null = null
     let lastContextPosClient: { x: number; y: number } | null = null
 
-    // --- Undo/Redo 히스토리 ---
-    const HISTORY_MAX = 50
-    const history: SerializedGraph[] = []
-    let historyIndex = -1
-    function pushHistory() {
-        try {
-            const snap = exportGraph(editor, area)
-            if (historyIndex < history.length - 1) history.splice(historyIndex + 1)
-            history.push(snap)
-            if (history.length > HISTORY_MAX) history.shift()
-            historyIndex = history.length - 1
-        } catch { /* noop */ }
-    }
-    async function undo() {
-        if (historyIndex <= 0) return
-        historyIndex--
-        try { await importGraph(editor, area, history[historyIndex]) } catch { /* noop */ }
-        selectedNodeIds.clear(); applySelectionOutline()
-    }
-    async function redo() {
-        if (historyIndex >= history.length - 1) return
-        historyIndex++
-        try { await importGraph(editor, area, history[historyIndex]) } catch { /* noop */ }
-        selectedNodeIds.clear(); applySelectionOutline()
-    }
-    // 초기 스냅샷 저장
-    pushHistory()
+    // --- Undo/Redo 히스토리 제거됨 ---
     // 포커스/호버 기반 활성화 플래그 (이 인스턴스 전용)
     let isActive = false
     try { (container as any).tabIndex = (container as any).tabIndex ?? 0 } catch { /* noop */ }
@@ -478,23 +451,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     container.addEventListener('focusin', onFocusIn)
     container.addEventListener('focusout', onFocusOut)
 
-    // Ctrl/Cmd+Z (Undo), Ctrl/Cmd+Shift+Z 또는 Ctrl+Y (Redo)
-    const onKeyUndoRedo = (e: KeyboardEvent) => {
-        if (!isActive) return
-        const ae = document.activeElement as HTMLElement | null
-        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || (ae as any).isContentEditable)) return
-        const key = String(e.key || '').toLowerCase()
-        const ctrl = e.ctrlKey || e.metaKey
-        if (!ctrl) return
-        if (key === 'z' && !e.shiftKey) {
-            e.preventDefault(); e.stopPropagation(); void undo()
-        } else if ((key === 'z' && e.shiftKey) || key === 'y') {
-            e.preventDefault(); e.stopPropagation(); void redo()
-        }
-    }
-    // 임시 비활성화: Ctrl+Z/Redo 히스토리 단축키를 당분간 끕니다.
-    const ENABLE_HISTORY_HOTKEYS = false
-    if (ENABLE_HISTORY_HOTKEYS) window.addEventListener('keydown', onKeyUndoRedo, true)
+    // Ctrl/Cmd+Z / Redo 단축키는 히스토리 제거로 비활성화되었습니다.
 
     // 선택 하이라이트 적용/해제 (DOM outline로 표시)
     function applySelectionOutline() {
@@ -634,8 +591,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                 ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation()
                 window.removeEventListener('pointermove', onMove, true)
                 window.removeEventListener('pointerup', onUp, true)
-                // 이동 완료 후 히스토리 저장
-                pushHistory()
+                // 이동 완료
             }
             window.addEventListener('pointermove', onMove, true)
             window.addEventListener('pointerup', onUp, true)
@@ -757,8 +713,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         // 붙여넣기 후 선택 초기화
         selectedNodeIds.clear()
         applySelectionOutline()
-        // 히스토리 저장: 붙여넣기 완료
-        pushHistory()
+    // 붙여넣기 완료
     }
 
     copyBtn.addEventListener('click', () => { handleCopy() })
@@ -787,7 +742,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         }
         selectedNodeIds.clear()
         applySelectionOutline()
-        pushHistory()
+    // 잘라내기 완료
         closeMenu()
     })
 
@@ -843,7 +798,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
                             await (editor as any).removeNode(id)
                         } catch { /* noop */ }
                     }
-                    selectedNodeIds.clear(); applySelectionOutline(); pushHistory()
+                    selectedNodeIds.clear(); applySelectionOutline()
                 })()
             }
         } else if (key === 'v') {
@@ -875,7 +830,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             menu.remove()
             marquee.remove()
                 ; (area as any).destroy()
-            window.removeEventListener('keydown', onKeyUndoRedo, true)
+            // 히스토리 단축키 리스너 제거 불필요(등록 안 함)
             window.removeEventListener('keydown', onKeyCopyPaste, true)
         }
     }
