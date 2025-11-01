@@ -1,32 +1,26 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Store from 'electron-store';
 import { launchRLProcess, stopRLProcess } from './rl_launcher.js';
 import {
+  saveApiKeys,
+  loadApiKeys,
   fetchUpbitAccounts,
   fetchCandles,
   getHighestPrice,
   placeOrder,
   marketBuy,
   marketSell,
-  limitBuy,
-  limitSell,
   getCurrentPrice,
   getCurrentPrices,
-  buyAtCurrentPrice,
-  sellAtCurrentPrice,
   limitBuyWithKRW,
+  limitSellWithKRW,
   sellAll
-} from './upbit_api_manager_optimized.js';
+} from './upbit_api_manager.js';
 
 // __dirname 대체 (ESM 환경)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const store = new Store({
-  encryptionKey: 'trade-builder-encryption-key-2024',
-});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -61,39 +55,17 @@ app.on('before-quit', () => {
 
 // IPC: API 키 저장
 ipcMain.handle('keys:save', async (event, accessKey, secretKey) => {
-  try {
-    store.set('upbit.accessKey', accessKey);
-    store.set('upbit.secretKey', secretKey);
-    console.log('API 키가 암호화되어 저장되었습니다.');
-    return true;
-  } catch (error) {
-    console.error('API 키 저장 실패:', error);
-    throw error;
-  }
+  return await saveApiKeys(accessKey, secretKey);
 });
 
 // IPC: API 키 불러오기
 ipcMain.handle('keys:load', async (event) => {
-  try {
-    const accessKey = store.get('upbit.accessKey');
-    const secretKey = store.get('upbit.secretKey');
-
-    if (accessKey && secretKey) {
-      console.log('저장된 API 키를 불러왔습니다.');
-      return { accessKey, secretKey };
-    }
-
-    console.log('저장된 API 키가 없습니다.');
-    return null;
-  } catch (error) {
-    console.error('API 키 불러오기 실패:', error);
-    return null;
-  }
+  return await loadApiKeys();
 });
 
 // IPC: Upbit 계좌 조회
-ipcMain.handle('upbit:fetchAccounts', async (event, accessKey, secretKey) => {
-  return await fetchUpbitAccounts(accessKey, secretKey);
+ipcMain.handle('upbit:fetchAccounts', async (event) => {
+  return await fetchUpbitAccounts();
 });
 
 // IPC: RL 프로세스 시작
@@ -117,28 +89,18 @@ ipcMain.handle('upbit:getHighestPrice', async (event, market, periodUnit, period
 });
 
 // IPC: 통합 주문
-ipcMain.handle('upbit:placeOrder', async (event, accessKey, secretKey, options) => {
-  return await placeOrder(accessKey, secretKey, options);
+ipcMain.handle('upbit:placeOrder', async (event, options) => {
+  return await placeOrder(options);
 });
 
 // IPC: 시장가 매수
-ipcMain.handle('upbit:marketBuy', async (event, accessKey, secretKey, market, price) => {
-  return await marketBuy(accessKey, secretKey, market, price);
+ipcMain.handle('upbit:marketBuy', async (event, market, price) => {
+  return await marketBuy(market, price);
 });
 
 // IPC: 시장가 매도
-ipcMain.handle('upbit:marketSell', async (event, accessKey, secretKey, market, volume) => {
-  return await marketSell(accessKey, secretKey, market, volume);
-});
-
-// IPC: 지정가 매수
-ipcMain.handle('upbit:limitBuy', async (event, accessKey, secretKey, market, price, volume) => {
-  return await limitBuy(accessKey, secretKey, market, price, volume);
-});
-
-// IPC: 지정가 매도
-ipcMain.handle('upbit:limitSell', async (event, accessKey, secretKey, market, price, volume) => {
-  return await limitSell(accessKey, secretKey, market, price, volume);
+ipcMain.handle('upbit:marketSell', async (event, market, volume) => {
+  return await marketSell(market, volume);
 });
 
 // IPC: 현재가 조회 (단일 마켓)
@@ -151,22 +113,17 @@ ipcMain.handle('upbit:getCurrentPrices', async (event, markets) => {
   return await getCurrentPrices(markets);
 });
 
-// IPC: 현재가로 지정가 매수
-ipcMain.handle('upbit:buyAtCurrentPrice', async (event, accessKey, secretKey, market, volume) => {
-  return await buyAtCurrentPrice(accessKey, secretKey, market, volume);
-});
-
-// IPC: 현재가로 지정가 매도
-ipcMain.handle('upbit:sellAtCurrentPrice', async (event, accessKey, secretKey, market, volume) => {
-  return await sellAtCurrentPrice(accessKey, secretKey, market, volume);
-});
-
 // IPC: KRW 금액으로 지정가 매수
-ipcMain.handle('upbit:limitBuyWithKRW', async (event, accessKey, secretKey, market, price, krwAmount) => {
-  return await limitBuyWithKRW(accessKey, secretKey, market, price, krwAmount);
+ipcMain.handle('upbit:limitBuyWithKRW', async (event, market, price, krwAmount) => {
+  return await limitBuyWithKRW(market, price, krwAmount);
+});
+
+// IPC: KRW 금액으로 지정가 매도
+ipcMain.handle('upbit:limitSellWithKRW', async (event, market, price, krwAmount) => {
+  return await limitSellWithKRW(market, price, krwAmount);
 });
 
 // IPC: 보유 수량 전체 매도
-ipcMain.handle('upbit:sellAll', async (event, accessKey, secretKey, market, orderType, limitPrice) => {
-  return await sellAll(accessKey, secretKey, market, orderType, limitPrice);
+ipcMain.handle('upbit:sellAll', async (event, market, orderType, limitPrice) => {
+  return await sellAll(market, orderType, limitPrice);
 });

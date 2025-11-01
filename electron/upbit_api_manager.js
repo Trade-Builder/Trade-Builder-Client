@@ -1,12 +1,61 @@
 import axios from 'axios';
 import { SignJWT } from 'jose';
 import { v4 as uuidv4 } from 'uuid';
+import Store from 'electron-store';
+
+// Store 인스턴스 생성
+const store = new Store({
+  encryptionKey: 'trade-builder-encryption-key-2024',
+});
+
+/**
+ * API 키 저장
+ */
+export async function saveApiKeys(accessKey, secretKey) {
+  try {
+    store.set('upbit.accessKey', accessKey);
+    store.set('upbit.secretKey', secretKey);
+    console.log('API 키가 암호화되어 저장되었습니다.');
+    return true;
+  } catch (error) {
+    console.error('API 키 저장 실패:', error);
+    throw error;
+  }
+}
+
+/**
+ * API 키 불러오기
+ */
+export async function loadApiKeys() {
+  try {
+    const accessKey = store.get('upbit.accessKey');
+    const secretKey = store.get('upbit.secretKey');
+
+    if (accessKey && secretKey) {
+      console.log('저장된 API 키를 불러왔습니다.');
+      return { accessKey, secretKey };
+    }
+
+    console.log('저장된 API 키가 없습니다.');
+    return null;
+  } catch (error) {
+    console.error('API 키 불러오기 실패:', error);
+    return null;
+  }
+}
 
 /**
  * Upbit 계좌 조회
  */
-export async function fetchUpbitAccounts(accessKey, secretKey) {
+export async function fetchUpbitAccounts() {
   try {
+    const keys = await loadApiKeys();
+    if (!keys) {
+      throw new Error('저장된 API 키가 없습니다.');
+    }
+
+    const { accessKey, secretKey } = keys;
+
     const payload = {
       access_key: accessKey,
       nonce: uuidv4(),
@@ -119,8 +168,6 @@ export async function getHighestPrice(market, periodUnit, period) {
 
 /**
  * Upbit 통합 주문 함수
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
  * @param {object} options - 주문 옵션
  * @param {string} options.market - 마켓 코드 (예: 'KRW-BTC')
  * @param {string} options.side - 주문 종류 ('bid': 매수, 'ask': 매도)
@@ -133,8 +180,17 @@ export async function getHighestPrice(market, periodUnit, period) {
  * @param {number} [options.volume] - 주문 수량
  * @returns {Promise<{success: boolean, data?: any, error?: any}>}
  */
-export async function placeOrder(accessKey, secretKey, options) {
+export async function placeOrder(options) {
   try {
+    const keys = await loadApiKeys();
+    if (!keys) {
+      return {
+        success: false,
+        error: '저장된 API 키가 없습니다.'
+      };
+    }
+
+    const { accessKey, secretKey } = keys;
     const { market, side, orderType, price, volume } = options;
 
     // 주문 타입별 body 구성
@@ -210,13 +266,11 @@ export async function placeOrder(accessKey, secretKey, options) {
 
 /**
  * 시장가 매수 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
  * @param {string} market - 마켓 코드
  * @param {number} price - KRW 금액
  */
-export async function marketBuy(accessKey, secretKey, market, price) {
-  return placeOrder(accessKey, secretKey, {
+export async function marketBuy(market, price) {
+  return placeOrder({
     market,
     side: 'bid',
     orderType: 'market',
@@ -226,13 +280,11 @@ export async function marketBuy(accessKey, secretKey, market, price) {
 
 /**
  * 시장가 매도 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
  * @param {string} market - 마켓 코드
  * @param {number} volume - 매도 수량
  */
-export async function marketSell(accessKey, secretKey, market, volume) {
-  return placeOrder(accessKey, secretKey, {
+export async function marketSell(market, volume) {
+  return placeOrder({
     market,
     side: 'ask',
     orderType: 'market',
@@ -240,41 +292,7 @@ export async function marketSell(accessKey, secretKey, market, volume) {
   });
 }
 
-/**
- * 지정가 매수 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
- * @param {string} market - 마켓 코드
- * @param {number} price - 1개당 가격
- * @param {number} volume - 매수 수량
- */
-export async function limitBuy(accessKey, secretKey, market, price, volume) {
-  return placeOrder(accessKey, secretKey, {
-    market,
-    side: 'bid',
-    orderType: 'limit',
-    price,
-    volume
-  });
-}
 
-/**
- * 지정가 매도 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
- * @param {string} market - 마켓 코드
- * @param {number} price - 1개당 가격
- * @param {number} volume - 매도 수량
- */
-export async function limitSell(accessKey, secretKey, market, price, volume) {
-  return placeOrder(accessKey, secretKey, {
-    market,
-    side: 'ask',
-    orderType: 'limit',
-    price,
-    volume
-  });
-}
 
 /**
  * 현재가 조회 (단일 마켓)
@@ -345,62 +363,49 @@ export async function getCurrentPrices(markets) {
 }
 
 /**
- * 현재가로 지정가 매수 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
- * @param {string} market - 마켓 코드
- * @param {number} volume - 매수 수량
- */
-export async function buyAtCurrentPrice(accessKey, secretKey, market, volume) {
-  const priceInfo = await getCurrentPrice(market);
-  if (!priceInfo.success) {
-    return priceInfo;
-  }
-
-  return limitBuy(accessKey, secretKey, market, priceInfo.price, volume);
-}
-
-/**
- * 현재가로 지정가 매도 (간편 함수)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
- * @param {string} market - 마켓 코드
- * @param {number} volume - 매도 수량
- */
-export async function sellAtCurrentPrice(accessKey, secretKey, market, volume) {
-  const priceInfo = await getCurrentPrice(market);
-  if (!priceInfo.success) {
-    return priceInfo;
-  }
-
-  return limitSell(accessKey, secretKey, market, priceInfo.price, volume);
-}
-
-/**
  * KRW 금액으로 지정가 매수 (금액 지정 -> 수량 자동 계산)
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
  * @param {string} market - 마켓 코드
  * @param {number} price - 1개당 가격
  * @param {number} krwAmount - 사용할 KRW 금액
  */
-export async function limitBuyWithKRW(accessKey, secretKey, market, price, krwAmount) {
+export async function limitBuyWithKRW(market, price, krwAmount) {
   const volume = krwAmount / price;
-  return limitBuy(accessKey, secretKey, market, price, volume);
+  return placeOrder({
+    market,
+    side: 'bid',
+    orderType: 'limit',
+    price,
+    volume
+  });
+}
+
+/**
+ * KRW 금액으로 지정가 매도 (금액 지정 -> 수량 자동 계산)
+ * @param {string} market - 마켓 코드
+ * @param {number} price - 1개당 가격
+ * @param {number} krwAmount - 매도할 KRW 금액 (가격 * 수량)
+ */
+export async function limitSellWithKRW(market, price, krwAmount) {
+  const volume = krwAmount / price;
+  return placeOrder({
+    market,
+    side: 'ask',
+    orderType: 'limit',
+    price,
+    volume
+  });
 }
 
 /**
  * 보유 수량 전체 매도
- * @param {string} accessKey - Access Key
- * @param {string} secretKey - Secret Key
  * @param {string} market - 마켓 코드
  * @param {string} orderType - 'market' 또는 'limit'
  * @param {number} [limitPrice] - 지정가인 경우 가격
  */
-export async function sellAll(accessKey, secretKey, market, orderType = 'market', limitPrice = null) {
+export async function sellAll(market, orderType = 'market', limitPrice = null) {
   try {
     // 계좌 조회해서 보유 수량 확인
-    const accounts = await fetchUpbitAccounts(accessKey, secretKey);
+    const accounts = await fetchUpbitAccounts();
     const currency = market.split('-')[1]; // 'KRW-BTC' -> 'BTC'
     const account = accounts.find(acc => acc.currency === currency);
 
@@ -414,10 +419,16 @@ export async function sellAll(accessKey, secretKey, market, orderType = 'market'
     const volume = parseFloat(account.balance);
 
     if (orderType === 'market') {
-      return marketSell(accessKey, secretKey, market, volume);
+      return marketSell(market, volume);
     } else if (orderType === 'limit') {
       const price = limitPrice || (await getCurrentPrice(market)).price;
-      return limitSell(accessKey, secretKey, market, price, volume);
+      return placeOrder({
+        market,
+        side: 'ask',
+        orderType: 'limit',
+        price,
+        volume
+      });
     }
   } catch (error) {
     return {

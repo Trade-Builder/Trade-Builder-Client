@@ -19,11 +19,9 @@ export declare global {
 
       /**
        * 업비트 계좌 정보 조회
-       * @param accessKey - Upbit Access Key
-       * @param secretKey - Upbit Secret Key
        * @returns Promise<any>
        */
-      fetchUpbitAccounts: (accessKey: string, secretKey: string) => Promise<any>;
+      fetchUpbitAccounts: () => Promise<any>;
 
       /**
        * 업비트 캔들 데이터 조회
@@ -71,14 +69,10 @@ export declare global {
 
       /**
        * 업비트 통합 주문
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
        * @param options - 주문 옵션 {market, side, orderType, price, volume}
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       placeOrder: (
-        accessKey: string,
-        secretKey: string,
         options: {
           market: string;
           side: 'bid' | 'ask';
@@ -94,15 +88,11 @@ export declare global {
 
       /**
        * 업비트 시장가 매수
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
        * @param market - 마켓 코드 (예: 'KRW-BTC')
        * @param price - 주문 금액 (KRW)
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       marketBuy: (
-        accessKey: string,
-        secretKey: string,
         market: string,
         price: number
       ) => Promise<{
@@ -113,58 +103,12 @@ export declare global {
 
       /**
        * 업비트 시장가 매도
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
        * @param market - 마켓 코드 (예: 'KRW-BTC')
        * @param volume - 매도할 코인 수량
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       marketSell: (
-        accessKey: string,
-        secretKey: string,
         market: string,
-        volume: number
-      ) => Promise<{
-        success: boolean;
-        data?: any;
-        error?: any;
-      }>;
-
-      /**
-       * 업비트 지정가 매수
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
-       * @param market - 마켓 코드 (예: 'KRW-BTC')
-       * @param price - 1개당 가격
-       * @param volume - 매수 수량
-       * @returns Promise<{success: boolean, data?: any, error?: any}>
-       */
-      limitBuy: (
-        accessKey: string,
-        secretKey: string,
-        market: string,
-        price: number,
-        volume: number
-      ) => Promise<{
-        success: boolean;
-        data?: any;
-        error?: any;
-      }>;
-
-      /**
-       * 업비트 지정가 매도
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
-       * @param market - 마켓 코드 (예: 'KRW-BTC')
-       * @param price - 1개당 가격
-       * @param volume - 매도 수량
-       * @returns Promise<{success: boolean, data?: any, error?: any}>
-       */
-      limitSell: (
-        accessKey: string,
-        secretKey: string,
-        market: string,
-        price: number,
         volume: number
       ) => Promise<{
         success: boolean;
@@ -185,55 +129,41 @@ export declare global {
       }>;
 
       /**
-       * 현재가로 지정가 매수
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
-       * @param market - 마켓 코드 (예: 'KRW-BTC')
-       * @param volume - 매수 수량
-       * @returns Promise<{success: boolean, data?: any, error?: any}>
+       * 현재가 일괄 조회 (여러 마켓 동시 조회)
+       * @param markets - 마켓 코드 배열 (예: ['KRW-BTC', 'KRW-ETH'])
+       * @returns Promise<{success: boolean, data?: {[market: string]: number}, error?: any}>
        */
-      buyAtCurrentPrice: (
-        accessKey: string,
-        secretKey: string,
-        market: string,
-        volume: number
-      ) => Promise<{
+      getCurrentPrices: (markets: string[]) => Promise<{
         success: boolean;
-        data?: any;
-        error?: any;
-      }>;
-
-      /**
-       * 현재가로 지정가 매도
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
-       * @param market - 마켓 코드 (예: 'KRW-BTC')
-       * @param volume - 매도 수량
-       * @returns Promise<{success: boolean, data?: any, error?: any}>
-       */
-      sellAtCurrentPrice: (
-        accessKey: string,
-        secretKey: string,
-        market: string,
-        volume: number
-      ) => Promise<{
-        success: boolean;
-        data?: any;
+        data?: {[market: string]: number};
         error?: any;
       }>;
 
       /**
        * KRW 금액으로 지정가 매수
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
        * @param market - 마켓 코드 (예: 'KRW-BTC')
        * @param price - 1개당 가격
        * @param krwAmount - 사용할 KRW 금액
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       limitBuyWithKRW: (
-        accessKey: string,
-        secretKey: string,
+        market: string,
+        price: number,
+        krwAmount: number
+      ) => Promise<{
+        success: boolean;
+        data?: any;
+        error?: any;
+      }>;
+
+      /**
+       * KRW 금액으로 지정가 매도
+       * @param market - 마켓 코드 (예: 'KRW-BTC')
+       * @param price - 1개당 가격
+       * @param krwAmount - 매도할 KRW 금액
+       * @returns Promise<{success: boolean, data?: any, error?: any}>
+       */
+      limitSellWithKRW: (
         market: string,
         price: number,
         krwAmount: number
@@ -245,16 +175,12 @@ export declare global {
 
       /**
        * 보유 수량 전체 매도
-       * @param accessKey - Access Key
-       * @param secretKey - Secret Key
        * @param market - 마켓 코드 (예: 'KRW-BTC')
        * @param orderType - 'market' 또는 'limit'
        * @param limitPrice - 지정가인 경우 가격
        * @returns Promise<{success: boolean, data?: any, error?: any}>
        */
       sellAll: (
-        accessKey: string,
-        secretKey: string,
         market: string,
         orderType?: 'market' | 'limit',
         limitPrice?: number | null

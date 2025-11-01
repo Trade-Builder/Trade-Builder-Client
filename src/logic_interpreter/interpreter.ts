@@ -7,7 +7,7 @@ let dummydata = [1];
 function* RLRunningRoutine(log: (title: string, msg: string) => void) {
     window.electronAPI.startRL();
     yield wait(5000);
-    let RLServer = new RLConnection(log);
+    let RLServer = new RLConnection();
     yield wait(2000);
     RLServer.send({ action: "init", data: dummydata.slice(0, 200) });
     yield wait(1000);
@@ -30,7 +30,6 @@ function startCoroutine(generatorFunc: ((log: (title: string, msg: string) => vo
     }
     step(iterator.next());
 }
-
 
 class Interpreter {
     parseComplete: boolean = false;
@@ -78,29 +77,39 @@ class Interpreter {
         this.parseComplete = true;
     }
 
-    public run(logRunDetails: boolean) {
+    public run(logDetails: boolean) {
         if (!this.parseComplete) { return; }
-        let buyResult: boolean;
-        let sellResult: boolean;
-        if (logRunDetails && this.log != null) {
-            buyResult = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
-            sellResult = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
+        this.runBuy(logDetails);
+        //this.runSell(logDetails);
+    }
+
+    public runBuy(logDetails: boolean) {
+        let result: boolean;
+        if (logDetails && this.log != null) {
+            result = this.buyRoot!.evaluateDetailed(this.log.bind(this, "BuyGraph")) as boolean;
         }
         else {
-            buyResult = this.buyRoot!.evaluate() as boolean;
-            sellResult = this.sellRoot!.evaluate() as boolean;
+            result = this.buyRoot!.evaluate() as boolean;
         }
-        if (buyResult) {
-            this.doBuy(this.buyOrderData);
-        } else {
-            if (this.log != null) 
-                this.log("Buy", "매수 조건 미충족");
+        if (result) {
+            this.doBuy();
+        } else if (this.log != null) {
+            this.log("Buy", "매수 조건 미충족");
         }
-        if (sellResult) {
-            this.doSell(this.sellOrderData);
-        } else {
-            if (this.log != null)
-                this.log("Sell", "매도 조건 미충족");
+    }
+
+    public runSell(logDetails: boolean) {
+        let result: boolean;
+        if (logDetails && this.log != null) {
+            result = this.sellRoot!.evaluateDetailed(this.log.bind(this, "SellGraph")) as boolean;
+        }
+        else {
+            result = this.sellRoot!.evaluate() as boolean;
+        }
+        if (result) {
+            this.doSell();
+        } else if (this.log != null) {
+            this.log("Sell", "매도 조건 미충족");
         }
     }
 
@@ -203,25 +212,29 @@ class Interpreter {
         }
     }
 
-    private doBuy(orderData: OrderData) {
+    private async doBuy() {
         let msg = '';
-        if (orderData.orderType === 'market') {
-            msg = `시장가 자산의 ${orderData.sellPercent}% 매수`;
+        if (this.buyOrderData.orderType === 'market') {
+            await window.electronAPI.marketBuy(this.stock, this.buyOrderData.quantity);
+            msg = `시장가 ${this.buyOrderData.quantity}원어치 매수`;
         }
         else {
-            msg = `지정가 ${orderData.limitPrice}$에 자산의 ${orderData.sellPercent}% 매수`;
+            await window.electronAPI.limitBuyWithKRW(this.stock, this.buyOrderData.limitPrice, this.buyOrderData.quantity);
+            msg = `지정가 ${this.buyOrderData.limitPrice}$에 ${this.buyOrderData.quantity}원어치 매수`;
         }
         if (this.log != null) 
             this.log("Buy", msg);
     }
 
-    private doSell(orderData: OrderData) {
+    private async doSell() {
         let msg = '';
-        if (orderData.orderType === 'market') {
-            msg = `시장가 자산의 ${orderData.sellPercent}% 매도`;
+        if (this.sellOrderData.orderType === 'market') {
+            await window.electronAPI.marketSell(this.stock, this.sellOrderData.quantity);
+            msg = `시장가 ${this.sellOrderData.quantity}원어치 매도`;
         }
         else {
-            msg = `지정가 ${orderData.limitPrice}$에 자산의 ${orderData.sellPercent}% 매도`;
+            await window.electronAPI.limitSellWithKRW(this.stock, this.sellOrderData.limitPrice, this.sellOrderData.quantity);
+            msg = `지정가 ${this.sellOrderData.limitPrice}$에 ${this.sellOrderData.quantity}원어치 매도`;
         }
         if (this.log != null)
              this.log("Sell", msg);
@@ -245,18 +258,18 @@ class Interpreter {
 class OrderData {
     orderType: string;
     limitPrice: number;
-    sellPercent: number;
+    quantity: number;
 
     constructor() {
         this.orderType = "";
         this.limitPrice = 0;
-        this.sellPercent = 0;
+        this.quantity = 0;
     }
 
     init(data: any) {
-        this.orderType = String(data.orderType ?? 'market');
+        this.orderType = data.orderType;
         this.limitPrice = data.limitPrice;
-        this.sellPercent = data.sellPercent;
+        this.quantity = data.sellPercent;
     }
 }
 
@@ -269,12 +282,12 @@ function tryParseInt(v: any): number {
 
 const interpreter = new Interpreter();
 
-export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logRunDetails: boolean = false) {
+export function runLogic(stock: string, logicData: any, logFunc: (title: string, msg: string) => void, logDetails: boolean = false) {
     //startCoroutine(RLRunningRoutine, logFunc);
     interpreter.setStock(stock);
     interpreter.setLogfunc(logFunc);
     interpreter.parse(logicData);
     setTimeout(() => {
-        interpreter.run(logRunDetails);
+        interpreter.run(logDetails);
     }, 500);
 }
