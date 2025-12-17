@@ -1,0 +1,204 @@
+/* THEME TOKENS */
+:root {
+    /* defaults will be overridden by data-theme attr */
+    --app-bg: #0a0a0a;
+    --text-primary: #e5e7eb;
+    --panel-bg: #0b0f14;
+    --panel-border: #1f2937;
+    --accent: #22d3ee; /* cyan-400 */
+    --accent-weak: rgba(34, 211, 238, 0.25);
+
+    --node-bg-start: #0b0f14;
+    --node-bg-end: #0a0e12;
+    --node-border: #1f2937;
+    --title-color: #e5e7eb;
+    --io-title-color: #e5e7eb;
+    --muted: #94a3b8;
+
+    --control-bg: #0f172a;
+    --control-fg: #e5e7eb;
+    --control-border: #334155;
+
+    --socket-grad-1: #164e63;
+    --socket-grad-2: #0b1320;
+    --socket-border: #334155;
+
+    --conn-stroke: #67e8f9; /* cyan-300 */
+
+    --canvas-bg: #0a0f14;
+
+    /* canvas grid (defaults) */
+    --grid-major: rgba(71, 85, 105, 0.22); /* slate-600 @22% */
+    --grid-minor: rgba(51, 65, 85, 0.14); /* slate-700 @14% */
+
+    color-scheme: dark;
+}
+
+:root[data-theme='dark'] {
+    --app-bg: #0a0a0a; /* neutral-950 */
+    --text-primary: #e5e7eb; /* gray-200 */
+    --panel-bg: #0b0f14;
+    --panel-border: #1f2937; /* neutral-800 */
+        --panel-grad-from: #111827; /* gray-900 */
+        --panel-grad-to: #0a0a0a; /* neutral-950 */
+    --accent: #22d3ee; /* cyan-400 */
+    --accent-weak: rgba(34, 211, 238, 0.25);
+
+    --node-bg-start: #0d1013;
+    --node-bg-end: #0a0e12;
+    --node-border: #1f2937;
+    --title-color: #e5e7eb;
+    --io-title-color: #e5e7eb;
+    --muted: #94a3b8; /* slate-400 */
+
+    --control-bg: #0f172a; /* slate-900 */
+    --control-fg: #e5e7eb;
+    --control-border: #334155; /* slate-700 */
+
+    --socket-grad-1: #164e63; /* cyan-800 */
+    --socket-grad-2: #0b1320;
+    --socket-border: #334155;
+
+    --conn-stroke: #67e8f9; /* cyan-300 */
+
+    --canvas-bg: #111827; /* dark neutral base for better contrast */
+
+    /* stronger grid visibility for dark */
+    --grid-major: rgba(97, 106, 120, 0.26); /* slate-400 @26% */
+    --grid-minor: rgba(47, 77, 116, 0.14); /* slate-500 @14% */
+
+    color-scheme: dark;
+
+        /* sidebar section bar */
+        --section-bar-bg: rgba(148, 163, 184, 0.12); /* slate-400 @ 12% */
+}
+
+:root[data-theme='light'] {
+    --app-bg: #fafafa; /* neutral-50 */
+    --text-primary: #111827; /* gray-900 */
+    --panel-bg: #ffffff;
+    --panel-border: #e5e7eb; /* gray-200 */
+        --panel-grad-from: #ffffff;
+        --panel-grad-to: #f1f5f9; /* slate-100 */
+    --accent: #06b6d4; /* cyan-500 */
+    --accent-weak: rgba(6, 182, 212, 0.25);
+
+    --node-bg-start: #ffffff;
+    --node-bg-end: #f8fafc; /* slate-50 */
+    --node-border: #e5e7eb;
+    --title-color: #111827;
+    --io-title-color: #111827;
+    --muted: #6b7280; /* gray-500 */
+
+    --control-bg: #ffffff;
+    --control-fg: #111827;
+    --control-border: #d1d5db; /* gray-300 */
+
+    --socket-grad-1: #e0f2fe; /* sky-100 */
+    --socket-grad-2: #f1f5f9; /* slate-100 */
+    --socket-border: #cbd5e1; /* slate-300 */
+
+    --conn-stroke: #06b6d4; /* cyan-500 */
+
+    --canvas-bg: #f5f7fb;
+
+    /* softer grid for light */
+    --grid-major: rgba(0, 0, 0, 0.12);
+    --grid-minor: rgba(0, 0, 0, 0.06);
+
+    color-scheme: light;
+
+        /* sidebar section bar */
+        --section-bar-bg: rgba(17, 24, 39, 0.06); /* gray-900 @ 6% */
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+}
+
+/* Tailwind class overrides to follow theme variables */
+/* Backgrounds */
+.bg-neutral-950 { background-color: var(--app-bg) !important; }
+.bg-neutral-900 { background-color: var(--panel-bg) !important; }
+.bg-neutral-900\/40 { background-color: var(--panel-bg) !important; }
+.bg-neutral-900\/70 { background-color: var(--panel-bg) !important; }
+.bg-neutral-900\/60 { background-color: var(--panel-bg) !important; }
+.bg-neutral-900\/80 { background-color: var(--panel-bg) !important; }
+.bg-neutral-800 { background-color: var(--panel-bg) !important; }
+.bg-neutral-800\/70 { background-color: var(--panel-bg) !important; }
+.bg-neutral-800\/80 { background-color: var(--panel-bg) !important; }
+.bg-neutral-800\/60 { background-color: var(--panel-bg) !important; }
+
+/* Borders */
+.border-neutral-800 { border-color: var(--panel-border) !important; }
+.border-neutral-800\/70 { border-color: var(--panel-border) !important; }
+.border-neutral-700 { border-color: var(--panel-border) !important; }
+.border-neutral-700\/60 { border-color: var(--panel-border) !important; }
+.border-neutral-700\/40 { border-color: var(--panel-border) !important; }
+.border-neutral-700\/50 { border-color: var(--panel-border) !important; }
+
+/* Text */
+.text-gray-100, .text-gray-200, .text-gray-300 { color: var(--text-primary) !important; }
+.text-gray-400, .text-gray-500 { color: var(--muted) !important; }
+
+/* Hover utilities */
+.hover\:bg-neutral-700:hover { background-color: var(--panel-border) !important; }
+.hover\:bg-neutral-700\/10:hover { background-color: var(--panel-border) !important; }
+.hover\:bg-neutral-700\/20:hover { background-color: var(--panel-border) !important; }
+
+/* Accent mapping for cyan utilities */
+.text-cyan-400 { color: var(--accent) !important; }
+.hover\:border-cyan-500\/40:hover { border-color: var(--accent) !important; }
+.hover\:text-white:hover { color: var(--text-primary) !important; }
+
+/* Themed helpers */
+.themed-card {
+    background: linear-gradient(to bottom, var(--panel-grad-from), var(--panel-grad-to));
+    background-color: var(--panel-bg);
+}
+
+/* Sidebar section title bar */
+.sidebar-section__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin: 2px 0 8px 0;
+    background: var(--section-bar-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+}
+.sidebar-section__icon {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-weak);
+    opacity: .9;
+}
+.sidebar-section__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--text-primary);
+}
+
+/* Buttons or focus rings using cyan accents should respect --accent; some utilities will pick it via inline styles already. */
+
+/* Toast animations */
+@keyframes toastIn {
+    0% { transform: translateY(12px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes toastOut {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-6px); opacity: 0; }
+}
+.toast-slide-in {
+    animation: toastIn 180ms ease-out;
+}

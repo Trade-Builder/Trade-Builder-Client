@@ -1,0 +1,30 @@
+.fill-area {
+  display: table;
+  z-index: -1;
+  position: absolute;
+  top: -320000px;
+  left: -320000px;
+  width: 640000px;
+  height: 640000px;
+}
+
+.background {
+  background-color: var(--canvas-bg);
+  opacity: 1;
+  /* Grid layers: major 80px, minor 16px; colors from theme vars for visibility */
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(103, 232, 249, 0.06), rgba(0,0,0,0) 60%),
+    radial-gradient(ellipse at 80% 0%, rgba(103, 232, 249, 0.04), rgba(0,0,0,0) 60%),
+    linear-gradient(var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(var(--grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+  background-size:
+    100% 100%, 100% 100%,
+    80px 80px, 80px 80px,
+    16px 16px, 16px 16px;
+  background-position:
+    0 0, 0 0,
+    0 0, 0 0,
+    0 0, 0 0;
+}
