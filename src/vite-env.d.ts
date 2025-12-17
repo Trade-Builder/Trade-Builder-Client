@@ -68,6 +68,66 @@ export declare global {
       stopRL: () => Promise<void>;
 
       /**
+       * 로직 요약 목록(인덱스) 조회 [{id,name,stock,order}]
+       */
+      listLogics: () => Promise<any>;
+
+      /**
+       * 새 로직 생성
+       */
+      createLogic: (name: string) => Promise<any>;
+
+      /**
+       * 특정 로직 로드
+       */
+      loadLogic: (id: string) => Promise<any>;
+
+      /**
+       * 특정 로직 저장
+       */
+      saveLogic: (logic: any) => Promise<any>;
+
+      /**
+       * 특정 로직 삭제
+       */
+      deleteLogic: (id: string) => Promise<any>;
+
+      /**
+       * 로직 순서 재배치
+       */
+      reorderLogics: (ids: string[]) => Promise<any>;
+
+      /**
+       * 로직별 API 키 로드
+       */
+      loadLogicApiKeys: (id: string) => Promise<{ accessKey: string; secretKey: string } | null>;
+
+      /**
+       * 로직별 API 키 저장
+       */
+      saveLogicApiKeys: (id: string, accessKey: string, secretKey: string) => Promise<boolean>;
+
+      /**
+       * 테마 가져오기
+       */
+      getTheme: () => Promise<string>;
+
+      /**
+       * 테마 설정
+       */
+      setTheme: (theme: string) => Promise<void>;
+
+      /**
+       * 실행 중인 로직 가져오기
+       */
+      getRunningLogic: () => Promise<any>;
+
+      /**
+       * 실행 중인 로직 설정
+       */
+      setRunningLogic: (meta: any) => Promise<void>;
+
+      /**
        * 업비트 통합 주문
        * @param options - 주문 옵션 {market, side, orderType, price, volume}
        * @returns Promise<{success: boolean, data?: any, error?: any}>

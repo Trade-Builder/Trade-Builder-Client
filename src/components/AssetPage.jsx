@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ApiKeySettings from './ApiKeySettings';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { getCurrentPrices } from '../communicator/upbit_api';
+import { runLogic } from '../logic_interpreter/logic_runner';
 
 // ---------------------------------------------------------------
 // AssetPage: 기존의 로직 목록 페이지
@@ -11,6 +12,10 @@ const AssetPage = ({
   assets,
   assetsLoading,
   assetsError,
+  runningLogics,
+  runIntervalSeconds,
+  onRunIntervalChange,
+  onStopLogic,
   onLogicClick,
   onDeleteLogic,
   onReorderLogics,
@@ -21,7 +26,6 @@ const AssetPage = ({
   onCloseApiKeySettings,
   onApiKeysSaved
 }) => {
-  const [runningLogic, setRunningLogic] = useState(null);
   const [roi, setRoi] = useState(0);
   const [todayPnL, setTodayPnL] = useState(0);
   const [openedMenuId, setOpenedMenuId] = useState(null);
@@ -30,6 +34,7 @@ const AssetPage = ({
   const [selectedLogicForApi, setSelectedLogicForApi] = useState(null);
   const [apiValidityByLogic, setApiValidityByLogic] = useState({}); // { [logicId]: true|false|null }
   const [currentPrices, setCurrentPrices] = useState({}); // 현재가 저장
+  const [showIntervalInput, setShowIntervalInput] = useState(null); // 간격 설정 중인 로직 ID
 
   // ROI 계산 함수
   const calculateROI = () => {
@@ -99,28 +104,11 @@ const AssetPage = ({
     }
   };
 
+  // runningLogics에서 첫 번째 실행 중인 로직 가져오기
+  const runningLogic = runningLogics.length > 0 ? runningLogics[0] : null;
+
   useEffect(() => {
-    (async () => {
-      try {
-        // @ts-ignore
-        if (window.electronAPI && window.electronAPI.getRunningLogic) {
-          // @ts-ignore
-          const saved = await window.electronAPI.getRunningLogic();
-          if (saved) setRunningLogic(saved);
-          else {
-            // 최초 실행 시에는 실행 중인 로직이 없어야 하므로 null로 초기화
-            // persisted 값도 명시적으로 비워 둔다
-            // @ts-ignore
-            if (window.electronAPI && window.electronAPI.setRunningLogic) {
-              // @ts-ignore
-              await window.electronAPI.setRunningLogic(null);
-            }
-            setRunningLogic(null);
-          }
-        }
-      } catch {}
-      setRoi(7.25);
-    })();
+    setRoi(7.25);
   }, []);
 
   // 자산 정보나 현재가가 변경될 때마다 ROI와 P/L 계산
@@ -310,7 +298,7 @@ const AssetPage = ({
         </div>
 
         <div className="mb-1 text-sm sm:text-base text-gray-400">
-          실행중인 로직: <span className="font-medium text-cyan-400">{runningLogic ? runningLogic.name : '없음'}</span>
+          실행중인 로직: <span className="font-medium text-cyan-400">{runningLogic ? runningLogic.logicId : '없음'}</span>
         </div>
         <div className="text-sm sm:text-base text-gray-400">
           현재 수익률: <span className="font-semibold text-cyan-400">{roi.toFixed(2)}%</span>
@@ -323,7 +311,7 @@ const AssetPage = ({
         {[{
           title:'총 전략 수', value: String(logics.length||0)
         },{
-          title:'실행 중', value: runningLogic? '1' : '0'
+          title:'실행 중', value: runningLogics.length > 0 ? String(runningLogics.length) : '0'
         },{
           title:'누적 ROI', value: `${roi.toFixed(2)}%`
         },{
@@ -425,39 +413,101 @@ const AssetPage = ({
                             실행하기 // 실행기능 임시로 뺌 
                           </button> */} 
                           {/* 실행/정지 토글 */}
-                          {runningLogic?.id === logic.id ? (
+                          {runningLogic ? (
                             <button
                               className="px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-500 border border-red-500/40"
-                              onClick={async () => {
-                                try {
-                                  // @ts-ignore
-                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
-                                    // @ts-ignore
-                                    await window.electronAPI.setRunningLogic(null);
-                                  }
-                                } catch {}
-                                setRunningLogic(null);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStopLogic(logic.id);
                               }}
                             >
                               정지하기
                             </button>
                           ) : (
-                            <button
-                              className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
-                              onClick={async () => {
-                                const meta = { id: logic.id, name: logic.name };
-                                try {
-                                  // @ts-ignore
-                                  if (window.electronAPI && window.electronAPI.setRunningLogic) {
-                                    // @ts-ignore
-                                    await window.electronAPI.setRunningLogic(meta);
-                                  }
-                                } catch {}
-                                setRunningLogic(meta);
-                              }}
-                            >
-                              실행하기
-                            </button>
+                            <>
+                              {showIntervalInput === logic.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={runIntervalSeconds}
+                                    onChange={(e) => onRunIntervalChange(Math.max(1, parseInt(e.target.value) || 5))}
+                                    className="w-16 px-2 py-1 text-sm bg-neutral-800 border border-neutral-700 rounded text-gray-200"
+                                    placeholder="초"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <span className="text-xs text-gray-400">초</span>
+                                  <button
+                                    className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      
+                                      // 로직 데이터 로드
+                                      let logicData = null;
+                                      try {
+                                        // @ts-ignore
+                                        if (window.electronAPI && window.electronAPI.loadLogic) {
+                                          // @ts-ignore
+                                          const loadedLogic = await window.electronAPI.loadLogic(logic.id);
+                                          logicData = loadedLogic?.data;
+                                        }
+                                      } catch (error) {
+                                        console.error('로직 데이터 로드 실패:', error);
+                                      }
+
+                                      if (!logicData) {
+                                        alert('로직 데이터를 불러올 수 없습니다.');
+                                        return;
+                                      }
+
+                                      // 종목 정보 확인
+                                      const stock = logics.find(l => l.id === logic.id)?.stock || 'KRW-BTC';
+                                      
+                                      // 로그 함수
+                                      const logFunc = (title, msg) => {
+                                        console.log(`[${title}] ${msg}`);
+                                      };
+
+                                      // 로직 실행
+                                      const success = runLogic(
+                                        stock,
+                                        logicData,
+                                        logFunc,
+                                        false, // logDetails
+                                        logic.id,
+                                        runIntervalSeconds * 1000 // 초를 밀리초로 변환
+                                      );
+
+                                      if (success) {
+                                        setShowIntervalInput(null);
+                                      }
+                                    }}
+                                  >
+                                    확인
+                                  </button>
+                                  <button
+                                    className="px-3 py-1 rounded text-sm text-gray-400 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowIntervalInput(null);
+                                    }}
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  className="px-3 py-1 rounded text-sm text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/40"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowIntervalInput(logic.id);
+                                  }}
+                                >
+                                  실행하기
+                                </button>
+                              )}
+                            </>
                           )}
                           <button
                             className="px-3 py-1 rounded text-sm bg-neutral-800 text-gray-200 border border-neutral-700 hover:border-cyan-500/40 hover:text-white flex items-center gap-2"

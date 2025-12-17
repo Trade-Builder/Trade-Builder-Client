@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from './toast/ToastProvider.jsx';
 import { useReteAppEditor } from '../hooks/useReteAppEditor';
 import { createNodeByKind, clientToWorld, exportGraph, importGraph } from '../rete/app-editor';
-import { runLogic } from '../logic_interpreter/interpreter';
+import { runLogic, stopLogic } from '../logic_interpreter/logic_runner';
+import { Interpreter } from '../logic_interpreter/interpreter';
 
 // ----------------------------------------------------------------
 // LogicEditorPage: 매수 / 매도 로직을 편집하는 컴포넌트
 // ----------------------------------------------------------------
-const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName = '' }) => {
+const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, onRunIntervalChange, onStopLogic, onBack, onSave, defaultNewLogicName = '' }) => {
     const toast = useToast();
     const [logic, setLogic] = useState(null);
     const [logicName, setLogicName] = useState('');
@@ -19,12 +20,15 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
     const [theme, setTheme] = useState('dark');
     const [logRunDetails, setLogRunDetails] = useState(false);
     const logRunDetailsRef = useRef(false);
-    const [isRunning, setIsRunning] = useState(false);
     const runTimerRef = useRef(null);
     const infoAreaRef = useRef(null);
     const { editorRef: buyEditorRef, areaRef: buyAreaRef, ready: buyReady } = useReteAppEditor(buyCanvasRef);
     const { editorRef: sellEditorRef, areaRef: sellAreaRef, ready: sellReady } = useReteAppEditor(sellCanvasRef);
     const [expanded, setExpanded] = useState(null); // 'buy' | 'sell' | null
+
+    // 현재 로직이 실행 중인지 확인
+    const isRunning = runningLogics.some(r => r.logicId === selectedLogicId);
+    const runningLogicId = isRunning ? selectedLogicId : null;
 
     const appendLog = useCallback((title, msg) => {
         let date = new Date();
@@ -141,13 +145,6 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
         const buyGraph = data.buyGraph || data.buy || data.graphBuy;
         const sellGraph = data.sellGraph || data.sell || data.graphSell;
 
-            // 로드되는 JSON 구조를 확인
-            try {
-                console.log('[로직 로드] 선택된 로직 전체 데이터(JSON):\n', JSON.stringify(logic, null, 2));
-                console.log('[로직 로드] 매수 그래프(JSON):\n', JSON.stringify(buyGraph, null, 2));
-                console.log('[로직 로드] 매도 그래프(JSON):\n', JSON.stringify(sellGraph, null, 2));
-            } catch {}
-
         const buyEditor = buyEditorRef.current;
         const buyArea = buyAreaRef.current;
         const sellEditor = sellEditorRef.current;
@@ -247,9 +244,7 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                 stock: stock || undefined,
                 data: updatedLogicData,
             };
-            console.log('[로직 저장] 매수 그래프(JSON):\n', JSON.stringify(buyGraph, null, 2));
-            console.log('[로직 저장] 매도 그래프(JSON):\n', JSON.stringify(sellGraph, null, 2));
-            
+
             await Promise.resolve(onSave(payload));
             try {
                 toast.success('로직이 저장되었습니다.');
@@ -260,6 +255,57 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
             try { toast.error('저장 중 오류가 발생했습니다.'); } catch {}
         }
     };
+
+    const handleStartLogic = useCallback(() => {
+        const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+        const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+        const logicData = { buyGraph, sellGraph };
+        
+        const logicId = selectedLogicId || `temp-logic-${Date.now()}`;
+        
+        // appendLog 함수를 runLogic에 전달
+        const success = runLogic(
+            stock,
+            logicData,
+            appendLog,  // 로그 함수 전달
+            logRunDetailsRef.current,
+            logicId,
+            runIntervalSeconds * 1000 // 초를 밀리초로 변환
+        );
+        
+        if (success) {
+            appendLog("System", `로직 실행 시작 (${runIntervalSeconds}초 간격)`);
+        }
+    }, [stock, appendLog, selectedLogicId, runIntervalSeconds, buyEditorRef, buyAreaRef, sellEditorRef, sellAreaRef]);
+
+    const handleStopLogic = useCallback(() => {
+        if (runningLogicId) {
+            onStopLogic(runningLogicId);
+            appendLog("System", "로직 실행 중지");
+        }
+    }, [runningLogicId, onStopLogic, appendLog]);
+
+    const handleRunOnce = useCallback(async () => {
+        const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
+        const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
+        const logicData = { buyGraph, sellGraph };
+        
+        try {
+            // Interpreter 직접 생성하여 동기식 실행
+            const interpreter = new Interpreter(appendLog);
+            interpreter.setStock(stock);
+            interpreter.parse(logicData);
+            
+            if (!interpreter.parseComplete) {
+                appendLog("Error", "로직 파싱 실패");
+                return;
+            }
+            await interpreter.run(logRunDetailsRef.current);
+
+        } catch (error) {
+            appendLog("Error", `실행 중 오류: ${error.message}`);
+        }
+    }, [stock, appendLog, buyEditorRef, buyAreaRef, sellEditorRef, sellAreaRef]);
 
   return (
     <div className="w-full max-w-[1900px] h-[100vh] p-4 sm:p-6 lg:p-8 rounded-3xl shadow-2xl flex flex-col bg-neutral-950 text-gray-200 border border-neutral-800/70">
@@ -464,25 +510,46 @@ const LogicEditorPage = ({ selectedLogicId, onBack, onSave, defaultNewLogicName 
                     />
                     실행 과정 출력하기
                 </label>
+                {/* 실행 간격 설정 */}
+                <div className="mt-2 mb-1">
+                    <label className="text-sm text-gray-300 block mb-1">
+                        실행 간격 (초)
+                    </label>
+                    <input
+                        type="number"
+                        className="w-full px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-gray-200 text-sm"
+                        value={runIntervalSeconds}
+                        onChange={(e) => onRunIntervalChange(Math.max(1, parseInt(e.target.value) || 5))}
+                        min="1"
+                        step="1"
+                        disabled={isRunning}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">최소 1초</p>
+                </div>
                 {!isRunning ? (
-                    <button
-                        className="w-full p-3 mt-4 text-lg font-semibold text-white rounded-lg bg-cyan-600 hover:bg-cyan-500 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]"
-                        onClick={() => {
-                            const buyGraph = exportGraph(buyEditorRef.current, buyAreaRef.current);
-                            const sellGraph = exportGraph(sellEditorRef.current, sellAreaRef.current);
-                            runLogic(stock, { buyGraph, sellGraph }, appendLog, logRunDetailsRef.current);
-                        }}
-                    >
-                        로직 실행하기
-                    </button>
+                    <>
+                        <button
+                            className="w-full p-3 mt-4 text-lg font-semibold text-white rounded-lg bg-cyan-600 hover:bg-cyan-500 shadow-[0_10px_30px_-10px_rgba(34,211,238,0.5)]"
+                            onClick={handleStartLogic}
+                        >
+                            로직 반복 실행
+                        </button>
+                        <button
+                            className="w-full p-2 mt-2 text-sm font-semibold text-gray-200 bg-neutral-800 rounded-lg hover:bg-neutral-700 border border-neutral-700"
+                            onClick={handleRunOnce}
+                        >
+                            1회만 실행
+                        </button>
+                    </>
                 ) : (
                     <>
                         <div className="mt-3 mb-1 text-sm text-emerald-300 flex items-center gap-2">
-                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> 실행 중…
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> 
+                            실행 중… (ID: {runningLogicId?.substring(0, 12)}...)
                         </div>
                         <button
                             className="w-full p-3 mt-2 text-lg font-semibold text-white rounded-lg bg-red-600 hover:bg-red-500 shadow-[0_10px_30px_-10px_rgba(239,68,68,0.5)]"
-                            //onClick={stopRun}
+                            onClick={handleStopLogic}
                         >
                             정지하기
                         </button>
