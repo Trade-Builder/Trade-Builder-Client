@@ -36,10 +36,8 @@
 
 <img src="public/실행화면1.png" alt="메인화면" width="100%" />
 
-<details> 
-  <summary>상세내용 </summary>
+<details> 상세 기능 표시(클릭)
     <br>
-
 
 #### 포트폴리오 분석 패널
 <img width="1725" height="641" alt="image" src="https://github.com/user-attachments/assets/4abfc387-9ba0-44ff-81e4-03bf2784fc6e" />
