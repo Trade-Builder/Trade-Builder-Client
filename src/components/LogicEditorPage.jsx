@@ -308,7 +308,7 @@ const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, o
     }, [stock, appendLog, buyEditorRef, buyAreaRef, sellEditorRef, sellAreaRef]);
 
   return (
-    <div className="w-full max-w-[1900px] h-[100vh] p-4 sm:p-6 lg:p-8 rounded-3xl shadow-2xl flex flex-col bg-neutral-950 text-gray-200 border border-neutral-800/70">
+    <div className="w-full max-w-[2280px] h-[100vh] p-4 sm:p-6 lg:p-8 rounded-3xl shadow-2xl flex flex-col bg-neutral-950 text-gray-200 border border-neutral-800/70">
         {/* 상단 헤더: 로직 이름 수정 및 거래소/종목 선택 + 저장/뒤로가기 버튼 */}
     <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
             <input 
@@ -409,7 +409,7 @@ const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, o
                                     key={item.kind}
                                     draggable
                                     onDragStart={(e) => onDragStart(e, item.kind)}
-                                    className="p-3 text-center bg-neutral-800/80 border border-neutral-700 rounded-md shadow-sm cursor-grab select-none hover:bg-neutral-700"
+                                    className="glass-card p-3 text-center bg-neutral-800/80 border border-neutral-700 rounded-md shadow-sm cursor-grab select-none hover:bg-neutral-700 transition-all hover:scale-105 active:scale-95"
                                     title="드래그하여 캔버스로 가져오세요"
                                 >
                                     {item.label}
@@ -439,10 +439,18 @@ const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, o
                             <button
                                 type="button"
                                 onClick={() => setExpanded(prev => prev === 'buy' ? null : 'buy')}
-                                className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm select-none hover:bg-neutral-700"
+                                className="absolute left-3 top-3 z-10 flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-800/70 border border-neutral-700 backdrop-blur-md hover:bg-neutral-700 hover:border-neutral-600 shadow-lg hover:shadow-xl group"
                                 title={expanded === 'buy' ? '축소하기' : '확장하기'}
                             >
-                                BuyGraph
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                    </svg>
+                                    <span className="text-sm font-semibold text-gray-200">Buy Graph</span>
+                                </div>
+                                <svg className={`w-4 h-4 text-gray-300 ${expanded === 'buy' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
                             </button>
                         </div>
 
@@ -462,10 +470,18 @@ const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, o
                             <button
                                 type="button"
                                 onClick={() => setExpanded(prev => prev === 'sell' ? null : 'sell')}
-                                className="absolute left-2 top-2 z-10 text-xs font-semibold text-gray-300 bg-neutral-800/70 border border-neutral-700 px-2 py-1 rounded shadow-sm select-none hover:bg-neutral-700"
+                                className="absolute left-3 top-3 z-10 flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-800/70 border border-neutral-700 backdrop-blur-md hover:bg-neutral-700 hover:border-neutral-600 shadow-lg hover:shadow-xl group"
                                 title={expanded === 'sell' ? '축소하기' : '확장하기'}
                             >
-                                SellGraph
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                    </svg>
+                                    <span className="text-sm font-semibold text-gray-200">Sell Graph</span>
+                                </div>
+                                <svg className={`w-4 h-4 text-gray-300 ${expanded === 'sell' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -475,26 +491,36 @@ const LogicEditorPage = ({ selectedLogicId, runningLogics, runIntervalSeconds, o
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-200">로그</h3>
                 </div>
-                <div ref={infoAreaRef} className="flex-grow p-2 bg-neutral-900 rounded border border-neutral-800 text-sm text-gray-300 overflow-auto" style={{ maxHeight: '60vh' }}>
+                <div ref={infoAreaRef} className="flex-grow p-2 rounded border text-sm overflow-auto themed-log-container" style={{ maxHeight: '60vh' }}>
                     {logs.map((l, idx) => (
                         <li
                             key={idx}
-                            className="py-1 border-b last:border-b-0 flex flex-col"
+                            className={`py-2 px-2 mb-1 rounded border-l-4 flex flex-col transition-all fade-in themed-log-item ${
+                                l.title === 'Error'
+                                    ? 'log-error border-red-500'
+                                    : l.title === 'Buy' || l.title === 'Sell'
+                                    ? 'log-success border-cyan-500'
+                                    : l.title === 'System'
+                                    ? 'log-system border-blue-500'
+                                    : 'log-info border-gray-600'
+                            }`}
                         >
                             <div className="text-[14px] text-gray-200">
-                            <strong className={`text-[11px] mr-2 ${
+                            <strong className={`text-[11px] mr-2 font-bold ${
                                 l.title === 'Error'
-                                    ? 'text-red-400'
+                                    ? 'text-error'
                                     : l.title === 'Buy' || l.title === 'Sell'
                                     ? 'text-cyan-400'
+                                    : l.title === 'System'
+                                    ? 'text-blue-400'
                                     : 'text-gray-400'
                             }`}>
-                                [{l.title}]
+                                {l.title === 'Error' ? '❌' : l.title === 'Buy' ? '💰' : l.title === 'Sell' ? '📈' : l.title === 'System' ? '⚙️' : 'ℹ️'} [{l.title}]
                             </strong>
                                 {l.msg}
                             </div>
-                            <span className="self-end text-[11px] text-gray-500">
-                                {l.time}
+                            <span className="self-end text-[11px] text-gray-500 mt-1">
+                                ⏰ {l.time}
                             </span>
                         </li>
                     ))}

@@ -334,27 +334,73 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     menu.style.position = 'absolute'
     menu.style.zIndex = '50'
     menu.style.display = 'none'
-    // 다크 테마와 조화로운 컨텍스트 메뉴 스타일
-    menu.style.background = '#0b1220'
-    menu.style.boxShadow = '0 8px 24px rgba(0,0,0,0.35)'
-    menu.style.borderRadius = '10px'
-    menu.style.padding = '4px'
-        ; (menu.style as any).border = '1px solid #1f2937'
-    // 글자 폭에 맞게 자동 너비, 줄바꿈 방지로 좌우 폭을 최소화
+    menu.style.backdropFilter = 'blur(12px)'
+    ;(menu.style as any).webkitBackdropFilter = 'blur(12px)'
+    menu.style.borderRadius = '12px'
+    menu.style.padding = '6px'
     ;(menu.style as any).minWidth = 'auto'
     ;(menu.style as any).whiteSpace = 'nowrap'
+    
+    // 테마별 스타일 적용 함수
+    const updateMenuTheme = () => {
+        const theme = document.documentElement.getAttribute('data-theme')
+        if (theme === 'light') {
+            menu.style.background = 'rgba(248, 250, 252, 0.92)' // slate-50
+            menu.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(34, 211, 238, 0.25)'
+            menu.style.border = '1px solid rgba(34, 211, 238, 0.25)'
+        } else {
+            menu.style.background = 'rgba(15, 23, 42, 0.85)' // slate-900
+            menu.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(34, 211, 238, 0.2)'
+            menu.style.border = '1px solid rgba(34, 211, 238, 0.15)'
+        }
+    }
+    updateMenuTheme()
+    
+    // 테마 변경 감지
+    const themeObserver = new MutationObserver(updateMenuTheme)
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     const delBtn = document.createElement('button')
     delBtn.textContent = '삭제'
     delBtn.style.display = 'block'
-    delBtn.style.width = 'auto'
-    delBtn.style.padding = '6px 10px'
-    delBtn.style.margin = '2px 4px'
+    delBtn.style.width = '100%'
+    delBtn.style.padding = '12px 20px'
+    delBtn.style.margin = '0 0 2px 0'
     delBtn.style.textAlign = 'center'
-    delBtn.style.color = '#ffffff'
-    delBtn.style.background = '#ef4444' // red-500
+    delBtn.style.fontSize = '14px'
+    delBtn.style.fontWeight = '500'
+    delBtn.style.lineHeight = '1.4'
+    delBtn.style.background = 'transparent'
     delBtn.style.borderRadius = '8px'
-        ; (delBtn.style as any).border = 'none'
+    delBtn.style.border = 'none'
     delBtn.style.cursor = 'pointer'
+    delBtn.style.transition = 'all 0.15s ease'
+    
+    const updateDelBtnTheme = () => {
+        const theme = document.documentElement.getAttribute('data-theme')
+        if (theme === 'light') {
+            delBtn.style.color = 'rgba(220, 38, 38, 0.9)' // red-600
+            delBtn.onmouseenter = () => {
+                delBtn.style.background = 'rgba(220, 38, 38, 0.12)'
+                delBtn.style.color = 'rgba(185, 28, 28, 1)' // red-700
+            }
+            delBtn.onmouseleave = () => {
+                delBtn.style.background = 'transparent'
+                delBtn.style.color = 'rgba(220, 38, 38, 0.9)'
+            }
+        } else {
+            delBtn.style.color = 'rgba(248, 113, 113, 0.95)' // red-400
+            delBtn.onmouseenter = () => {
+                delBtn.style.background = 'rgba(239, 68, 68, 0.15)'
+                delBtn.style.color = 'rgba(252, 165, 165, 1)'
+            }
+            delBtn.onmouseleave = () => {
+                delBtn.style.background = 'transparent'
+                delBtn.style.color = 'rgba(248, 113, 113, 0.95)'
+            }
+        }
+    }
+    updateDelBtnTheme()
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     menu.appendChild(delBtn)
     container.appendChild(menu)
 
@@ -369,23 +415,7 @@ export async function createAppEditor(container: HTMLElement): Promise<{
         menu.style.top = `${clientY - rect.top}px`
         menu.style.display = 'block'
         currentNode = node
-        // 메뉴 표시 후 버튼 폭을 "잘라내기" 버튼에 맞춰 정렬
-        requestAnimationFrame(() => {
-            try {
-                // 측정 전 초기화
-                delBtn.style.width = 'auto'
-                copyBtn.style.width = 'auto'
-                // cutBtn이 현재 메뉴에 존재할 때만 정렬 수행
-                if (menu.contains(cutBtn)) {
-                    const w = cutBtn.offsetWidth
-                    if (w && w > 0) {
-                        const px = `${w}px`
-                        delBtn.style.width = px
-                        copyBtn.style.width = px
-                    }
-                }
-            } catch { /* noop */ }
-        })
+        // 모든 버튼은 이미 width: 100%로 설정되어 자동으로 정렬됨
     }
 
     function findNodeAt(clientX: number, clientY: number): TradeNode | null {
@@ -597,6 +627,12 @@ export async function createAppEditor(container: HTMLElement): Promise<{
             window.addEventListener('pointerup', onUp, true)
             return
         }
+        // 그 외: 빈 캔버스 클릭 시 선택 해제
+        // 노드를 클릭하지 않았고, Shift도 누르지 않았다면 선택 해제
+        if (!e.shiftKey && !node && selectedNodeIds.size > 0) {
+            selectedNodeIds.clear()
+            applySelectionOutline()
+        }
         // 그 외 기본 동작(단일 노드 드래그/캔버스 동작)은 통과
     }
     container.addEventListener('pointerdown', onPointerDownCapture, { capture: true })
@@ -613,41 +649,131 @@ export async function createAppEditor(container: HTMLElement): Promise<{
     const copyBtn = document.createElement('button')
     copyBtn.textContent = '복사'
     copyBtn.style.display = 'block'
-    copyBtn.style.width = 'auto'
-    copyBtn.style.padding = '6px 10px'
-    copyBtn.style.margin = '2px 4px'
+    copyBtn.style.width = '100%'
+    copyBtn.style.padding = '12px 20px'
+    copyBtn.style.margin = '0 0 2px 0'
     copyBtn.style.textAlign = 'center'
-    copyBtn.style.color = '#182031ff'
-    copyBtn.style.background = '#ffffff'
+    copyBtn.style.fontSize = '14px'
+    copyBtn.style.fontWeight = '500'
+    copyBtn.style.lineHeight = '1.4'
+    copyBtn.style.background = 'transparent'
     copyBtn.style.borderRadius = '8px'
-    ;(copyBtn.style as any).border = 'none'
+    copyBtn.style.border = 'none'
     copyBtn.style.cursor = 'pointer'
+    copyBtn.style.transition = 'all 0.15s ease'
+    
+    const updateCopyBtnTheme = () => {
+        const theme = document.documentElement.getAttribute('data-theme')
+        if (theme === 'light') {
+            copyBtn.style.color = 'rgba(255, 255, 255, 0.95)' // white
+            copyBtn.onmouseenter = () => {
+                copyBtn.style.background = 'rgba(34, 211, 238, 0.15)'
+                copyBtn.style.color = 'rgba(255, 255, 255, 1)' // white
+            }
+            copyBtn.onmouseleave = () => {
+                copyBtn.style.background = 'transparent'
+                copyBtn.style.color = 'rgba(255, 255, 255, 0.95)'
+            }
+        } else {
+            copyBtn.style.color = 'rgba(255, 255, 255, 0.95)' // white
+            copyBtn.onmouseenter = () => {
+                copyBtn.style.background = 'rgba(34, 211, 238, 0.12)'
+                copyBtn.style.color = 'rgba(34, 211, 238, 1)'
+            }
+            copyBtn.onmouseleave = () => {
+                copyBtn.style.background = 'transparent'
+                copyBtn.style.color = 'rgba(255, 255, 255, 0.95)'
+            }
+        }
+    }
+    updateCopyBtnTheme()
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     const pasteBtn = document.createElement('button')
     pasteBtn.textContent = '붙여넣기'
     pasteBtn.style.display = 'block'
-    pasteBtn.style.width = 'auto'
-    pasteBtn.style.padding = '6px 10px'
-    pasteBtn.style.margin = '2px 4px'
+    pasteBtn.style.width = '100%'
+    pasteBtn.style.padding = '12px 20px'
+    pasteBtn.style.margin = '0 0 2px 0'
     pasteBtn.style.textAlign = 'center'
-    pasteBtn.style.color = '#182031ff'
-    pasteBtn.style.background = '#ffffff'
+    pasteBtn.style.fontSize = '14px'
+    pasteBtn.style.fontWeight = '500'
+    pasteBtn.style.lineHeight = '1.4'
+    pasteBtn.style.background = 'transparent'
     pasteBtn.style.borderRadius = '8px'
-    ;(pasteBtn.style as any).border = 'none'
+    pasteBtn.style.border = 'none'
     pasteBtn.style.cursor = 'pointer'
+    pasteBtn.style.transition = 'all 0.15s ease'
+    
+    const updatePasteBtnTheme = () => {
+        const theme = document.documentElement.getAttribute('data-theme')
+        if (theme === 'light') {
+            pasteBtn.style.color = 'rgba(51, 65, 85, 0.95)'
+            pasteBtn.onmouseenter = () => {
+                pasteBtn.style.background = 'rgba(34, 211, 238, 0.15)'
+                pasteBtn.style.color = 'rgba(8, 145, 178, 1)'
+            }
+            pasteBtn.onmouseleave = () => {
+                pasteBtn.style.background = 'transparent'
+                pasteBtn.style.color = 'rgba(51, 65, 85, 0.95)'
+            }
+        } else {
+            pasteBtn.style.color = 'rgba(203, 213, 225, 0.95)'
+            pasteBtn.onmouseenter = () => {
+                pasteBtn.style.background = 'rgba(34, 211, 238, 0.12)'
+                pasteBtn.style.color = 'rgba(34, 211, 238, 1)'
+            }
+            pasteBtn.onmouseleave = () => {
+                pasteBtn.style.background = 'transparent'
+                pasteBtn.style.color = 'rgba(203, 213, 225, 0.95)'
+            }
+        }
+    }
+    updatePasteBtnTheme()
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     const cutBtn = document.createElement('button')
     cutBtn.textContent = '잘라내기'
     cutBtn.style.display = 'block'
-    cutBtn.style.width = 'auto'
-    cutBtn.style.padding = '6px 10px'
-    cutBtn.style.margin = '2px 4px'
+    cutBtn.style.width = '100%'
+    cutBtn.style.padding = '12px 20px'
+    cutBtn.style.margin = '0 0 2px 0'
     cutBtn.style.textAlign = 'center'
-    cutBtn.style.color = '#182031ff'
-    cutBtn.style.background = '#efd4adff'
+    cutBtn.style.fontSize = '14px'
+    cutBtn.style.fontWeight = '500'
+    cutBtn.style.lineHeight = '1.4'
+    cutBtn.style.background = 'transparent'
     cutBtn.style.borderRadius = '8px'
-    ;(cutBtn.style as any).border = 'none'
+    cutBtn.style.border = 'none'
     cutBtn.style.cursor = 'pointer'
+    cutBtn.style.transition = 'all 0.15s ease'
+    
+    const updateCutBtnTheme = () => {
+        const theme = document.documentElement.getAttribute('data-theme')
+        if (theme === 'light') {
+            cutBtn.style.color = 'rgba(217, 119, 6, 0.95)' // amber-600
+            cutBtn.onmouseenter = () => {
+                cutBtn.style.background = 'rgba(217, 119, 6, 0.15)'
+                cutBtn.style.color = 'rgba(180, 83, 9, 1)' // amber-700
+            }
+            cutBtn.onmouseleave = () => {
+                cutBtn.style.background = 'transparent'
+                cutBtn.style.color = 'rgba(217, 119, 6, 0.95)'
+            }
+        } else {
+            cutBtn.style.color = 'rgba(251, 191, 36, 0.95)' // amber-400
+            cutBtn.onmouseenter = () => {
+                cutBtn.style.background = 'rgba(251, 191, 36, 0.15)'
+                cutBtn.style.color = 'rgba(252, 211, 77, 1)'
+            }
+            cutBtn.onmouseleave = () => {
+                cutBtn.style.background = 'transparent'
+                cutBtn.style.color = 'rgba(251, 191, 36, 0.95)'
+            }
+        }
+    }
+    updateCutBtnTheme()
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     // 기존 메뉴에 동적으로 버튼 구성
     function rebuildMenuButtons({ allowDelete, allowCopy, allowPaste, allowCut }: { allowDelete: boolean; allowCopy: boolean; allowPaste: boolean; allowCut: boolean }) {

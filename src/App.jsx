@@ -248,16 +248,20 @@ const App = () => {
 
       {/* Theme Toggle */}
       {currentPage === 'asset' && (
-        <div style={{ position: 'fixed', top: 14, right: 14, zIndex: 1000 }}>
+        <div style={{ position: 'fixed', top: 14, right: 14, zIndex: 1000 }} className="fade-in">
           <button
             onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            className="btn-primary glass-card"
             style={{
-              padding: '8px 12px',
-              borderRadius: 10,
+              padding: '10px 16px',
+              borderRadius: 12,
               border: '1px solid var(--panel-border)',
               background: 'var(--panel-bg)',
               color: 'var(--text-primary)',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.12)'
+              boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '14px'
             }}
             title="테마 전환 (Dark/Light)"
           >
