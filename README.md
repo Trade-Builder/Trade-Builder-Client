@@ -1,8 +1,7 @@
 # 🚀 Trade Builder
 
 <div align="center">
-<img width="2376" height="1758" alt="image" src="https://github.com/user-attachments/assets/8c673139-7517-4559-ac2b-c35a6bbf3812" />
-
+<img src="public/인트로 애니메이션.gif" alt="인트로" width="100%" />
 **코드 없이 설계하는 차세대 암호화폐 자동매매 플랫폼**
 
 [![Electron](https://img.shields.io/badge/Electron-38.2.2-47848F?style=flat&logo=electron&logoColor=white)](https://www.electronjs.org/)
