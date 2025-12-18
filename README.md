@@ -45,6 +45,7 @@
 
 #### 포트폴리오 분석 패널
 <img width="1725" height="641" alt="image" src="https://github.com/user-attachments/assets/4abfc387-9ba0-44ff-81e4-03bf2784fc6e" />
+
 - **총 자산 추적**: 현재 보유 암호화폐의 KRW 환산 총액 실시간 계산
 - **ROI 지표**: 투자 수익률을 퍼센트와 절대값으로 동시 표시
 - **일일 손익(P/L)**: 당일 거래 손익을 실시간으로 추적
