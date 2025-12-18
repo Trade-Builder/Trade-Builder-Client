@@ -72,10 +72,8 @@
 - **실행 로그 추적**: 각 로직의 실행 이력과 결과 기록
 
 
-  <summary><strong>🎨 테마 커스터마이징</strong></summary>
+  <summary><strong>🎨 다크/라이트 테마 지원</strong></summary>
 
-<br>
-#### 다크/라이트 모드지원
 ![다크라이트모드](https://github.com/user-attachments/assets/642bd7f3-79a5-4c08-8834-0ac58a4635b4)
 - **다크/라이트 모드 지원**: 장시간 모니터링에 최적화된 눈 보호 인터페이스
 - **시스템 테마 연동**: OS 설정을 자동으로 감지하여 적용
@@ -95,7 +93,7 @@ Rete.js 기반 고급 노드 에디터로 복잡한 알고리즘 트레이딩 �
 <details>
   <summary><strong>LogicEditorPage 상세기능(클릭)</summary>
 
-<br>
+<img width="3839" height="2086" alt="image" src="https://github.com/user-attachments/assets/2f31f7f1-4eba-4a5d-b02e-acf45a391bfa" />
 
 #### 강력한 그래픽 인터페이스
 - **Rete.js 엔진**: 업계 표준 노드 편집 라이브러리로 유연한 편집 경험 제공
@@ -113,59 +111,6 @@ Rete.js 기반 고급 노드 에디터로 복잡한 알고리즘 트레이딩 �
 | ⚖️ **비교 연산** | >, <, >=, <=, ==, != |
 | 🎲 **상수 입력** | 숫자, 비율, 임계값 설정 |
 | 🤖 **AI 신호** | RL Signal, ML Prediction |
-
-</details>
-
-<details>
-  <summary><strong>🔬 실시간 디버깅 및 백테스팅</strong></summary>
-
-<br>
-
-#### 인터랙티브 로그 시스템
-- **노드별 상태 추적**: 각 노드의 입출력 값을 실시간으로 표시
-- **조건 평가 가시화**: 매수/매도 조건이 충족되는 순간 즉시 알림
-- **세부 로그 토글**: 성능 모니터링을 위한 상세 로그 on/off
-- **타임스탬프 기록**: 모든 로직 실행 이벤트에 정확한 시간 기록
-
-#### 백그라운드 자동 실행
-- **주기적 평가**: 설정한 간격마다 자동으로 조건 확인 (1초~수시간 단위)
-- **비동기 처리**: Web Worker 기반으로 UI 블로킹 없이 로직 실행
-- **에러 핸들링**: 로직 오류 시 자동 중단 및 에러 메시지 표시
-
-</details>
-
-<details>
-  <summary><strong>🧠 AI/ML 통합 - 강화학습 신호 활용</strong></summary>
-
-<br>
-
-#### Python RL 모델 연동
-- **자동 프로세스 관리**: Electron에서 Python RL 스크립트를 자동 실행/종료
-- **WebSocket 실시간 통신**: 밀리초 단위 저지연 신호 수신
-- **RL Signal 노드**: 학습된 강화학습 모델의 예측을 매매 조건으로 직접 사용
-- **모델 테스트 패널**: RL 모델의 출력을 실시간으로 모니터링하며 신뢰도 검증
-
-#### 하이브리드 전략 구축
-- 전통적 기술 지표(RSI, SMA)와 AI 예측을 조합하여 정교한 전략 설계
-- 예: `(RSI < 30 AND RL_Signal == "BUY") OR (SMA_Cross == True)`
-
-</details>
-
-<details>
-  <summary><strong>🔄 포터블 로직 관리</strong></summary>
-
-<br>
-
-#### JSON 기반 직렬화
-- **완전한 상태 저장**: 노드 위치, 연결 관계, 파라미터 값을 JSON으로 직렬화
-- **버전 관리 친화적**: Git 등 VCS로 로직의 변경 이력 추적 가능
-- **Import/Export**: 로직을 파일로 내보내고, 다른 환경에서 재사용
-- **로직 공유**: 전략을 커뮤니티와 공유하거나 백업 보관
-
-#### 캔버스 최적화
-- **전체 화면 확장**: Buy 또는 Sell 그래프를 전체 화면으로 확대하여 집중 편집
-- **자동 레이아웃 조정**: 확장/축소 시 Rete Area가 자동으로 재계산되어 부드러운 전환
-- **퍼포먼스 최적화**: 대규모 그래프에서도 60fps 유지
 
 </details>
 
