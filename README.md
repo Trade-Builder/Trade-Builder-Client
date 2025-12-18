@@ -37,9 +37,8 @@
 <img src="public/실행화면1.png" alt="메인화면" width="100%" />
 
 <details> 
-  <summary><strong>📊 실시간 자산 모니터링 시스템</strong></summary>
-
-<br>
+  <summary>상세내용 </summary>
+    <br>
 
 
 #### 포트폴리오 분석 패널
