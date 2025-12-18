@@ -36,7 +36,8 @@
 
 <img src="public/실행화면1.png" alt="메인화면" width="100%" />
 
-<details> 상세 기능 표시(클릭)
+<details> 
+    <summary>상세내용 표시</summary>
     
     <br>
 
