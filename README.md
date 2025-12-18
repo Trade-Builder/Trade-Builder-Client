@@ -37,7 +37,7 @@
 <img src="public/실행화면1.png" alt="메인화면" width="100%" />
 
 <details> 
-    <summary>상세내용 표시</summary>
+    <summary>AssetPage 상세기능(클릭)</summary>
     
     <br>
 
@@ -61,6 +61,7 @@
 
 
 #### 유연한 전략 운영
+
 - **드래그 앤 드롭 재정렬**: 로직 우선순위를 직관적으로 조정
 - **개별 제어**: 각 로직을 독립적으로 실행/중지/수정 가능
 - **동적 간격 설정**: 로직별 실행 주기를 1초 단위로 세밀 조정
@@ -75,7 +76,7 @@
 
 <br>
 #### 다크/라이트 모드지원
-![다크라이트모드](https://github.com/user-attachments/assets/16735612-c517-499b-bde4-57c96b805a5e)
+![다크라이트모드](https://github.com/user-attachments/assets/642bd7f3-79a5-4c08-8834-0ac58a4635b4)
 - **다크/라이트 모드 지원**: 장시간 모니터링에 최적화된 눈 보호 인터페이스
 - **시스템 테마 연동**: OS 설정을 자동으로 감지하여 적용
 - **영구 저장**: Electron Store를 통해 사용자 설정 유지
@@ -92,7 +93,7 @@ Rete.js 기반 고급 노드 에디터로 복잡한 알고리즘 트레이딩 �
 <img src="public/로직%20노드%20구성%20v3.png" alt="로직 노드 구성" width="100%" />
 
 <details>
-  <summary><strong>🧩 프로페셔널 노드 에디터</strong></summary>
+  <summary><strong>LogicEditorPage 상세기능(클릭)</summary>
 
 <br>
 
