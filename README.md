@@ -88,7 +88,6 @@
 Rete.js 기반 고급 노드 에디터로 복잡한 알고리즘 트레이딩 전략을 시각적으로 구현
 
 <img src="public/실행화면2.png" alt="에디터화면" width="100%" />
-<img src="public/로직%20노드%20구성%20v3.png" alt="로직 노드 구성" width="100%" />
 
 <details>
   <summary><strong>LogicEditorPage 상세기능(클릭)</summary>
