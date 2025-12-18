@@ -37,6 +37,7 @@
 <img src="public/실행화면1.png" alt="메인화면" width="100%" />
 
 <details> 상세 기능 표시(클릭)
+    
     <br>
 
 #### 포트폴리오 분석 패널
