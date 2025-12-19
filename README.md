@@ -120,7 +120,7 @@ Rete.js 기반 고급 노드 에디터로 복잡한 알고리즘 트레이딩 �
 - **동적 연결 검증**: 타입 체크로 잘못된 노드 연결 방지
 - **확장 가능 아키텍처**: 새로운 지표나 조건을 쉽게 노드로 추가 가능
 
-### ⚙️ 엔터프라이즈급 실행 엔진
+### ⚙️ 최적화된 실행 엔진
 
 #### AST 기반 컴파일러
 ```typescript
@@ -683,13 +683,7 @@ npm run electron:dev
 
 ### 문의 채널
 - **Issue Tracker**: [GitHub Issues](https://github.com/Trade-Builder/Trade-Builder-Client/issues)
-- **Discussion**: [GitHub Discussions](https://github.com/Trade-Builder/Trade-Builder-Client/discussions)
-- **Email**: dlquddbs1234@gmail.com
-
-### 문서
-- 📖 [사용자 가이드](docs/user-guide.md)
-- 🛠️ [개발자 문서](docs/developer.md)
-- 🎓 [튜토리얼](docs/tutorials/)
+- **Email**: dlquddbs1234@gmail.com 
 
 ---
 
