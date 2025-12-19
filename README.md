@@ -34,7 +34,8 @@
 
 실시간 포트폴리오 관리와 멀티 로직 운영의 중심 허브
 
-<img src="public/실행화면1.png" alt="메인화면" width="100%" />
+<img width="3822" height="2018" alt="image" src="https://github.com/user-attachments/assets/d5e317b5-739b-4ef9-b529-24fc43fd1957" />
+
 
 <details> 
     <summary>AssetPage 상세기능(클릭)</summary>
