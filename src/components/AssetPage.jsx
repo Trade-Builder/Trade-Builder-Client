@@ -246,7 +246,7 @@ const AssetPage = ({
   };
 
   return (
-    <div className="w-full max-w-6xl p-8 rounded-3xl shadow-2xl bg-neutral-950 text-gray-200 border border-neutral-800/70 fade-in">
+    <div className="w-full max-w-6xl p-8 rounded-3xl shadow-2xl bg-neutral-950 text-gray-200 border border-neutral-800/70 fade-in max-h-screen overflow-y-auto">
       {/* API 키 설정 모달 (AssetPage 내부 렌더) */}
       {showApiKeySettings && (
         <div className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center fade-in">
