@@ -38,8 +38,6 @@
 
 <details> 
     <summary>AssetPage 상세기능(클릭)</summary>
-    
-    <br>
 
 #### 포트폴리오 분석 패널
 <img width="1725" height="641" alt="image" src="https://github.com/user-attachments/assets/4abfc387-9ba0-44ff-81e4-03bf2784fc6e" />
@@ -683,9 +681,9 @@ npm run electron:dev
 ## 📞 지원 및 커뮤니티
 
 ### 문의 채널
-- **Issue Tracker**: [GitHub Issues](https://github.com/your-repo/trade-builder/issues)
-- **Discussion**: [GitHub Discussions](https://github.com/your-repo/trade-builder/discussions)
-- **Email**: support@tradebuilder.dev
+- **Issue Tracker**: [GitHub Issues](https://github.com/Trade-Builder/Trade-Builder-Client/issues)
+- **Discussion**: [GitHub Discussions](https://github.com/Trade-Builder/Trade-Builder-Client/discussions)
+- **Email**: dlquddbs1234@gmail.com
 
 ### 문서
 - 📖 [사용자 가이드](docs/user-guide.md)
@@ -696,10 +694,10 @@ npm run electron:dev
 
 ## 📊 프로젝트 통계
 
-![GitHub stars](https://img.shields.io/github/stars/your-repo/trade-builder?style=social)
-![GitHub forks](https://img.shields.io/github/forks/your-repo/trade-builder?style=social)
-![GitHub issues](https://img.shields.io/github/issues/your-repo/trade-builder)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/your-repo/trade-builder)
+![GitHub stars](https://img.shields.io/github/stars/Trade-Builder/Trade-Builder-Client?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Trade-Builder/Trade-Builder-Client?style=social)
+![GitHub issues](https://img.shields.io/github/issues/Trade-Builder/Trade-Builder-Client)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Trade-Builder/Trade-Builder-Client)
 
 ---
 
