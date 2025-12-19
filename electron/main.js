@@ -48,9 +48,6 @@ function createWindow() {
 
   // Vite 개발 서버 URL 로드
   mainWindow.loadURL('http://localhost:5173');
-
-  // 개발자 도구 항상 열기
-  mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(async () => {
